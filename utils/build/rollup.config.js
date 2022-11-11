@@ -357,10 +357,10 @@ let builds = [
 ];
 
 
-if ( process.env.ONLY_MODULE === 'true' ) {
+// if ( process.env.ONLY_MODULE === 'true' ) {
 
 	builds = builds[ 0 ];
 
-}
+// }
 
 export default builds;
