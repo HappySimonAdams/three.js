@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="../../examples/main.css">
+    <title>SDF图形(抗锯齿)</title>
+</head>
+<body>
+    <!-- Import maps polyfill -->
+    <!-- Remove this when import maps will be widely supported -->
+    <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/plugins/": "../examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/plugins/controls/OrbitControls.js';
+
+        const vs = `
+            varying vec2 vPosition;
+            void main() {
+                vPosition = position.xy;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const fs = `
+            varying vec2 vPosition;
+ 
+            // 圆形的sdf函数
+            float sdfCircle(vec2 coord, vec2 center, float radius)
+            {
+                vec2 offset = coord - center;
+                return sqrt((offset.x * offset.x) + (offset.y * offset.y)) - radius;
+            }
+
+            // 圆环的sdf函数
+            float sdfTorus(vec2 coord, vec2 center, float radius1, float radius2)
+            {
+                vec2 offset = coord - center;
+                return abs(sqrt((offset.x * offset.x) + (offset.y * offset.y)) - radius1) - radius2;
+            }
+
+            vec4 render(float d, vec3 color, float stroke)
+            {
+                float anti = fwidth(d);
+                vec4 colorLayer = vec4(color, 1.0 - smoothstep(-anti, anti, d));
+                if (stroke < 0.000001) {
+                    return colorLayer;
+                }
+                vec4 strokeLayer = vec4(vec3(0.05, 0.05, 0.05), 1.0 - smoothstep(-anti, anti, d - stroke));
+                return vec4(mix(strokeLayer.rgb, colorLayer.rgb, colorLayer.a), strokeLayer.a);
+            }
+
+            void main() {
+                // float d = sdfCircle(vPosition, vec2(0.0), 10.0);
+                float d = sdfTorus(vPosition, vec2(0.0), 10.0, 2.0);
+                vec3 color = vec3(0.0, 0.8, 0.8);
+                gl_FragColor = render(d, color, fwidth(d) * 2.0);
+                // gl_FragColor = render(d, color, 0.1);
+                // gl_FragColor = render(d, color, 0.0);
+            }
+        `;
+
+        let renderer, scene, camera;
+
+        init();
+        render();
+
+        function init() {
+            camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
+            camera.position.set( 0, 20, 80 );
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color( 0xf0f0f0 );
+
+            const geometry = new THREE.PlaneGeometry(100, 100);
+            const material = new THREE.ShaderMaterial({
+                side: THREE.DoubleSide,
+                transparent: true,
+                vertexShader: vs,
+                fragmentShader: fs,
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+
+            const controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            controls.update();
+
+            controls.addEventListener( 'change', render );
+            window.addEventListener( 'resize', onWindowResize );
+        }
+
+        function render() {
+            renderer.render( scene, camera );
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            render();
+        }
+
+    </script>
+</body>
+</html>
