@@ -1,4 +1,5 @@
 import babel from '@rollup/plugin-babel';
+import resolve from '@rollup/plugin-node-resolve';
 import { terser } from 'rollup-plugin-terser';
 import babelrc from './.babelrc.json';
 
@@ -302,65 +303,77 @@ let builds = [
 			}
 		]
 	},
-	{
-		input: 'src/Three.js',
-		plugins: [
-			addons(),
-			glsl(),
-			babel( {
-				babelHelpers: 'bundled',
-				compact: false,
-				babelrc: false,
-				...babelrc
-			} ),
-			babelCleanup(),
-			header()
-		],
-		output: [
-			{
-				format: 'umd',
-				name: 'THREE',
-				file: 'build/three.js',
-				indent: '\t'
-			},
-			{
-				format: 'cjs',
-				name: 'THREE',
-				file: 'build/three.cjs',
-				indent: '\t'
-			}
-		]
-	},
-	{
-		input: 'src/Three.js',
-		plugins: [
-			addons(),
-			glconstants(),
-			glsl(),
-			babel( {
-				babelHelpers: 'bundled',
-				babelrc: false,
-				...babelrc
-			} ),
-			babelCleanup(),
-			terser(),
-			header()
-		],
-		output: [
-			{
-				format: 'umd',
-				name: 'THREE',
-				file: 'build/three.min.js'
-			}
-		]
-	}
+    {
+        input: 'simon/libs/troika.js',
+        plugins: [
+            resolve()
+        ],
+        output: [
+            {
+                format: 'esm',
+                file: 'build/troika.module.js'
+            }
+        ]
+    }
+	// {
+	// 	input: 'src/Three.js',
+	// 	plugins: [
+	// 		addons(),
+	// 		glsl(),
+	// 		babel( {
+	// 			babelHelpers: 'bundled',
+	// 			compact: false,
+	// 			babelrc: false,
+	// 			...babelrc
+	// 		} ),
+	// 		babelCleanup(),
+	// 		header()
+	// 	],
+	// 	output: [
+	// 		{
+	// 			format: 'umd',
+	// 			name: 'THREE',
+	// 			file: 'build/three.js',
+	// 			indent: '\t'
+	// 		},
+	// 		{
+	// 			format: 'cjs',
+	// 			name: 'THREE',
+	// 			file: 'build/three.cjs',
+	// 			indent: '\t'
+	// 		}
+	// 	]
+	// },
+	// {
+	// 	input: 'src/Three.js',
+	// 	plugins: [
+	// 		addons(),
+	// 		glconstants(),
+	// 		glsl(),
+	// 		babel( {
+	// 			babelHelpers: 'bundled',
+	// 			babelrc: false,
+	// 			...babelrc
+	// 		} ),
+	// 		babelCleanup(),
+	// 		terser(),
+	// 		header()
+	// 	],
+	// 	output: [
+	// 		{
+	// 			format: 'umd',
+	// 			name: 'THREE',
+	// 			file: 'build/three.min.js'
+	// 		}
+	// 	]
+	// }
 ];
 
 
-// if ( process.env.ONLY_MODULE === 'true' ) {
+if ( process.env.ONLY_MODULE === 'true' ) {
 
 	builds = builds[ 0 ];
 
-// }
+}
 
 export default builds;
