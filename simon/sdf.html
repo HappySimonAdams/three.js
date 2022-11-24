@@ -42,11 +42,46 @@
                 return sqrt((offset.x * offset.x) + (offset.y * offset.y)) - radius;
             }
 
-            // 圆环的sdf函数
+            // 圆环
             float sdfTorus(vec2 coord, vec2 center, float radius1, float radius2)
             {
                 vec2 offset = coord - center;
                 return abs(sqrt((offset.x * offset.x) + (offset.y * offset.y)) - radius1) - radius2;
+            }
+
+            // 椭圆
+            float sdfEclipse(vec2 coord, vec2 center, float a, float b)
+            {
+                float a2 = a * a;
+                float b2 = b * b;
+                return (b2 * (coord.x - center.x) * (coord.x - center.x) + a2 * (coord.y - center.y) * (coord.y - center.y) - a2 * b2) / (a2 * b2);
+            }
+
+            // 矩形
+            float sdfRectangle(vec2 coord, vec2 center, float width, float height)
+            {
+                vec2 d = abs(coord - center) - vec2(width, height);
+                return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+            }
+
+            float sdfRoundRectangle(vec2 coord, vec2 center, float width, float height, float r)
+            {
+                vec2 d = abs(coord - center) - vec2(width, height);
+                return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
+            }
+
+            // 集合运算
+            float sdfUnion(const float a, const float b)
+            {
+                return min(a, b);
+            }
+            float sdfDifference(const float a, const float b)
+            {
+                return max(a, -b);
+            }
+            float sdfIntersection(const float a, const float b)
+            {
+                return max(a, b);
             }
 
             vec4 render(float d, vec3 color, float stroke)
@@ -62,7 +97,17 @@
 
             void main() {
                 // float d = sdfCircle(vPosition, vec2(0.0), 10.0);
-                float d = sdfTorus(vPosition, vec2(0.0), 10.0, 2.0);
+                // float d = sdfTorus(vPosition, vec2(0.0), 10.0, 2.0);
+                // float d = sdfEclipse(vPosition, vec2(0.0), 10.0, 6.0);
+                // float d = sdfRectangle(vPosition, vec2(0.0), 10.0, 6.0);
+                // float d = sdfRoundRectangle(vPosition, vec2(0.0), 10.0, 6.0, 2.0);
+
+                float circle = sdfCircle(vPosition, vec2(0.0), 10.0);
+                float rect = sdfRectangle(vPosition, vec2(0.0), 12.0, 6.0);
+                // float d = sdfUnion(circle, rect);
+                // float d = sdfDifference(circle, rect);
+                float d = sdfIntersection(circle, rect);
+
                 vec3 color = vec3(0.0, 0.8, 0.8);
                 gl_FragColor = render(d, color, fwidth(d) * 2.0);
                 // gl_FragColor = render(d, color, 0.1);
@@ -76,7 +121,10 @@
         render();
 
         function init() {
-            camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
+            const aspect = window.innerWidth / window.innerHeight;
+            // camera = new THREE.PerspectiveCamera( 45, aspect, 0.1, 1000 );
+            const frustumSize = 100;
+            camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000);
             camera.position.set( 0, 20, 80 );
 
             scene = new THREE.Scene();
