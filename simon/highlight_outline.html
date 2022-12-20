@@ -214,6 +214,7 @@
             planeGeometry.setIndex([0, 1, 2, 0, 2, 3]);
 
             const plane = new THREE.Mesh(planeGeometry, material);
+            plane.position.x = 20;
             scene.add(plane);
         }
 
