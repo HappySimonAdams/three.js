@@ -2,6 +2,7 @@ import * as THREE from '../../build/three.module.js';
 
 const _raycaster = new THREE.Raycaster();
 const _mouse = new THREE.Vector2();
+const _plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
 const _pickRenderTarget = new THREE.WebGLRenderTarget();
 let _oldClearColor = new THREE.Color();
@@ -22,6 +23,15 @@ export function rayPick(options) {
         return _raycaster.intersectObjects(selectObject, true);
     }
     return _raycaster.intersectObject(selectObject, true);
+}
+
+// 只拾取坐标
+export function rayPickPosition(options) {
+    const { camera, x, y } = options;
+    _mouse.x = (x / window.innerWidth) * 2 - 1;
+    _mouse.y = -(y / window.innerHeight) * 2 + 1;
+    _raycaster.setFromCamera(_mouse, camera);
+    return _raycaster.ray.intersectPlane(_plane, new THREE.Vector3());
 }
 
 // GPU拾取。pickSize为奇数，表示拾取像素块的尺寸
