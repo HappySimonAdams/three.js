@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="../../examples/main.css">
+    <title>高亮</title>
+</head>
+<body>
+    <!-- Import maps polyfill -->
+    <!-- Remove this when import maps will be widely supported -->
+    <!-- <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script> -->
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/plugins/": "../examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/plugins/controls/OrbitControls.js';
+        import { GUI } from 'three/plugins/libs/lil-gui.module.min.js';
+        import Stats from 'three/plugins/libs/stats.module.js';
+        import { EffectComposer } from 'three/plugins/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/plugins/postprocessing/RenderPass.js';
+        import { ShaderPass } from 'three/plugins/postprocessing/ShaderPass.js';
+        import { FXAAShader } from 'three/plugins/shaders/FXAAShader.js';
+        import defined from './common/defined.js';
+
+        // 原渲染与拾取渲染共用一套shader
+        const vs = `
+            attribute float id;
+            uniform vec4 color;
+            uniform bool enablePick;
+            varying vec4 vColor;
+
+            vec4 id2color(const float value) {
+                int num = int(value);
+                int r = num & 255;
+                int g = (num >> 8) & 255;
+                int b = (num >> 16) & 255;
+                int a = (num >> 24) & 255;
+                return vec4(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0, float(a) / 255.0);
+            }
+
+            void main() {
+                if (enablePick) {
+                    vColor = id2color(id);
+                } else {
+                    vColor = color;
+                }
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const fs = `
+            varying vec4 vColor;
+
+            void main() {
+                gl_FragColor = vColor;
+            }
+        `;
+
+        const OutlineShader = {
+            uniforms: {
+                'tDiffuse': { value: null },
+                'pickIdTexture': { value: null }, //拾取pickId时的renderTarget.texture
+                'pickIdColor': { value: new THREE.Vector4(0, 0, 0, 0) }, //当前拾取id对应的颜色
+                'outlineColor': { value: new THREE.Vector4() },
+                'resolution': { value: new THREE.Vector2(1 / 1024, 1 / 512) }
+            },
+
+            vertexShader: `
+                varying vec2 vUv;
+
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform sampler2D pickIdTexture;
+                uniform vec4 pickIdColor;
+                uniform vec4 outlineColor;
+                uniform vec2 resolution;
+                varying vec2 vUv;
+
+                bool selected(vec2 offset) {
+                    // 注意要乘以255.0（将0~1转换到0~255进行比较）
+                    vec4 idColor = texture2D(pickIdTexture, vUv + offset) * vec4(255.0);
+                    return any(notEqual(pickIdColor, vec4(0.0))) && all(equal(pickIdColor, idColor));
+                }
+                
+                void main() {
+                    // 判断当前拾取像素与周围的8个像素
+                    if (
+                        !selected(vec2(0.0)) &&
+                        (selected(resolution * vec2(-1.0, -1.0)) ||
+                        selected(resolution * vec2(-1.0, 0.0)) ||
+                        selected(resolution * vec2(-1.0, 1.0)) ||
+                        selected(resolution * vec2(0.0, -1.0)) ||
+                        selected(resolution * vec2(0.0, 1.0)) ||
+                        selected(resolution * vec2(1.0, -1.0)) ||
+                        selected(resolution * vec2(1.0, 0.0)) ||
+                        selected(resolution * vec2(1.0, 1.0)))
+                    ) {
+                        gl_FragColor = outlineColor;
+                    } else {
+                        gl_FragColor = texture2D(tDiffuse, vUv);
+                    }
+                }
+            `
+        };
+
+        let renderer, scene, camera, controls, stats;
+        let composer, outlinePass, fxaaPass;
+        let gui, guiData;
+        let material;
+        let isDirty = true;
+
+        const pickIdRenderTarget = new THREE.WebGLRenderTarget();
+
+        const selectObjects = [];
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        let _oldClearColor = new THREE.Color();
+        let _oldClearAlpha;
+
+        init();
+        render();
+
+        function init() {
+            initViewer();
+            initObjects();
+            initGUI();
+            initPostProcessing();
+        }
+
+        function initViewer() {
+            // camera = new THREE.PerspectiveCamera( 45, width / height, 1, 1000 );
+            camera = new THREE.OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 1, 1000);
+            camera.position.set( 0, 20, 300 );
+
+            scene = new THREE.Scene();
+            // scene.add(new THREE.AxesHelper(20));
+
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+            renderer.setClearColor(0x333333);
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( width, height );
+            renderer.domElement.style.touchAction = 'none';
+            document.body.appendChild( renderer.domElement );
+
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            // controls.update();
+
+            stats = new Stats();
+            document.body.appendChild(stats.dom);
+
+            controls.addEventListener( 'change', () => isDirty = true );
+            window.addEventListener( 'resize', onWindowResize, false );
+        }
+        
+        function initObjects() {
+            const lineGeometry = new THREE.BufferGeometry();
+            // 最小id从1开始，排除0
+            const lineVertexBuffer = new Float32Array([
+                // x, y, z, id
+                -100, -100, 0, 1,
+                -100,  100, 0, 1,
+                -100,  100, 0, 2,
+                 100,  100, 0, 2,
+                 100,  100, 0, 3,
+                 100, -100, 0, 3,
+                 100, -100, 0, 4,
+                -100, -100, 0, 4,
+            ]);
+            const lineInterleavedBuffer = new THREE.InterleavedBuffer(lineVertexBuffer, 4);
+            lineGeometry.setAttribute('position', new THREE.InterleavedBufferAttribute(lineInterleavedBuffer, 3, 0));
+            lineGeometry.setAttribute('id', new THREE.InterleavedBufferAttribute(lineInterleavedBuffer, 1, 3));
+            
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    color: { value: new THREE.Vector4(1, 1, 1, 1) },
+                    enablePick: { value: false }
+                },
+                vertexShader: vs,
+                fragmentShader: fs,
+            });
+
+            const line = new THREE.Line(lineGeometry, material);
+            scene.add(line);
+
+            const planeGeometry = new THREE.BufferGeometry();
+            const planeVertexBuffer = new Float32Array([
+                // x, y, z, id
+                -50, -50, 0, 5,
+                 50, -50, 0, 5,
+                 50,  50, 0, 5,
+                -50,  50, 0, 5,
+            ]);
+            const planeInterleavedBuffer = new THREE.InterleavedBuffer(planeVertexBuffer, 4);
+            planeGeometry.setAttribute('position', new THREE.InterleavedBufferAttribute(planeInterleavedBuffer, 3, 0));
+            planeGeometry.setAttribute('id', new THREE.InterleavedBufferAttribute(planeInterleavedBuffer, 1, 3));
+            planeGeometry.setIndex([0, 1, 2, 0, 2, 3]);
+
+            const plane = new THREE.Mesh(planeGeometry, material);
+            plane.position.x = 20;
+            scene.add(plane);
+        }
+
+        
+        function initGUI() {
+            gui = new GUI();
+            guiData = {
+                pick: false,
+            };
+            gui.add(guiData, 'pick').onChange((value) => {
+                if (value) {
+                    renderer.domElement.addEventListener('mousedown', onMouseDown);
+                    renderer.domElement.style.cursor = 'pointer';
+                } else {
+                    renderer.domElement.removeEventListener('mousedown', onMouseDown);
+                    renderer.domElement.style.cursor = 'default';
+                }
+                // 开启拾取时，需要启动outlinePass，并渲染一次
+                outlinePass.enabled = value;
+                isDirty = true;
+            });
+        }
+
+        function initPostProcessing() {
+            composer = new EffectComposer(renderer);
+
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            outlinePass = new ShaderPass(OutlineShader);
+            outlinePass.uniforms.pickIdTexture.value = pickIdRenderTarget.texture;
+            outlinePass.uniforms.outlineColor.value.set(0.14, 0.65, 0.88, 0.6);
+            outlinePass.uniforms.resolution.value.set(1 / width, 1 / height);
+            outlinePass.enabled = guiData.pick;
+            composer.addPass(outlinePass);
+
+            fxaaPass = new ShaderPass(FXAAShader);
+            fxaaPass.uniforms.resolution.value.set(1 / width, 1 / height);
+            // composer.addPass(fxaaPass);
+        }
+
+        function renderPickId() {
+            material.uniforms.enablePick.value = true;
+
+            // 先保存旧的clearColor
+            renderer.getClearColor(_oldClearColor);
+            _oldClearAlpha = renderer.getClearAlpha();
+
+            pickIdRenderTarget.setSize(window.innerWidth, window.innerHeight);
+            renderer.setRenderTarget(pickIdRenderTarget);
+            renderer.setClearColor(0x000000, 0);
+            renderer.render(scene, camera);
+
+            // 还原
+            renderer.setClearColor(_oldClearColor, _oldClearAlpha);
+            renderer.setRenderTarget(null);
+
+            material.uniforms.enablePick.value = false;
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+
+            stats.begin();
+            if (isDirty) {
+                isDirty = false;
+                // 需要先渲染pickId
+                if (guiData.pick) {
+                    renderPickId();
+                }
+                composer.render();
+            }
+            stats.end();
+        }
+
+        function readPickId(options) {
+            const { x, y, pickSize } = options;
+            const bias = (pickSize - 1) / 2;
+            const pixes = new Uint8Array(pickSize * pickSize * 4);
+            // 左下角为坐标原点，Y坐标要反转坐标系
+            renderer.readRenderTargetPixels(pickIdRenderTarget, x - bias, window.innerHeight - y - bias, pickSize, pickSize, pixes);
+            // 将4位数转成1位数，即为pickId
+            const int32Array = new Int32Array(pixes.buffer);
+
+            let pickId = 0;
+            let pickIdColor = [0, 0, 0, 0];
+            for (let i = 0; i < int32Array.length; i++) {
+                pickId = int32Array[i];
+                // 拾取时，clearColor为: (0, 0, 0, 0)
+                if (pickId !== 0) {
+                    pickIdColor = [pixes[i * 4], pixes[i * 4 + 1], pixes[i * 4 + 2], pixes[i * 4 + 3]];
+                    break;
+                }
+            }
+            return { pickId, pickIdColor };
+        }
+
+        function onWindowResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            // camera.aspect = w / h;
+            camera.left = -w / 2;
+            camera.right = w / 2;
+            camera.top = h / 2;
+            camera.bottom = -h / 2;
+            camera.updateProjectionMatrix();
+            renderer.setSize( w, h );
+            composer.setSize( w, h );
+            outlinePass.uniforms.resolution.value.set(1 / w, 1 / h);
+            fxaaPass.uniforms.resolution.value.set(1 / w, 1 / h);
+            isDirty = true;
+        }
+
+        // TODO 添加多选（shader也要处理）
+        function onMouseDown(event) {
+            const { pickId, pickIdColor } = readPickId({
+                x: event.clientX,
+                y: event.clientY,
+                pickSize: 5,
+            });
+            console.log(pickId, pickIdColor);
+            outlinePass.uniforms.pickIdColor.value.fromArray(pickIdColor);
+            isDirty = true;
+        }
+
+        window.renderer = renderer;
+    </script>
+</body>
+</html>

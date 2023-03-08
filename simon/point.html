@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+        <meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="../../examples/main.css">
+		<title>point</title>
+	</head>
+	<body>
+		<div id="container"></div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "../examples/jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+			import * as THREE from 'three';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import Stats from 'three/addons/libs/stats.module.js';
+            import { rayPickPosition } from './common/picking.js';
+
+            let renderer, scene, camera, controls, stats;
+            let isDirty = true;
+            let vertexBuffer;
+            let geometry;
+
+			const width = window.innerWidth;
+            const height = window.innerHeight;
+
+			init();
+			render();
+
+			function init() {
+                initViewer();
+                initObjects();
+			}
+
+            function initViewer() {
+                camera = new THREE.OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 1, 1000);
+                camera.position.set( 0, 20, 300 );
+
+                scene = new THREE.Scene();
+                scene.matrixAutoUpdate = false;
+
+                const axes = new THREE.AxesHelper(20);
+                axes.matrixAutoUpdate = false;
+                scene.add(axes);
+
+                renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.outputEncoding = THREE.sRGBEncoding;
+                renderer.setClearColor(0x333333);
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( width, height );
+                renderer.domElement.style.touchAction = 'none';
+                document.body.appendChild( renderer.domElement );
+
+                controls = new OrbitControls( camera, renderer.domElement );
+                controls.target.set( 0, 0, 0 );
+                // controls.update();
+
+                stats = new Stats();
+                document.body.appendChild(stats.dom);
+
+                controls.addEventListener( 'change', () => isDirty = true );
+                window.addEventListener( 'resize', onWindowResize, false );
+
+                document.body.addEventListener('mousedown', onMouseDown, false);
+            }
+
+            function initObjects() {
+                const vertices = new Float32Array([
+                    100, 100, 0, 1, 10
+                ]);
+                // vertexBuffer = new THREE.InterleavedBuffer(vertices, 5);
+                vertexBuffer = new THREE.InterleavedBuffer(new Float32Array(), 5);
+
+                geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(vertexBuffer, 3, 0));
+                geometry.setAttribute('showAndSize', new THREE.InterleavedBufferAttribute(vertexBuffer, 2, 3));
+
+                const material = new THREE.ShaderMaterial({
+                    vertexShader: `
+                        attribute vec2 showAndSize;
+                        varying float v_show;
+
+                        void main() {
+                            float show = showAndSize.x;
+                            float size = showAndSize.y;
+
+                            gl_PointSize = size;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+                            v_show = show;
+                        }
+                    `,
+                    fragmentShader: `
+                        varying float v_show;
+
+                        void main() {
+                            if (!bool(v_show)) {
+                                discard;
+                            }
+                            gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);
+                        }
+                    `,
+                });
+
+				const points = new THREE.Points( geometry, material );
+                points.frustumCulled = false;
+                points.matrixAutoUpdate = false;
+                points.updateMatrix();
+				scene.add( points );
+            }
+            
+			function onWindowResize() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                // camera.aspect = w / h;
+                camera.left = -w / 2;
+                camera.right = w / 2;
+                camera.top = h / 2;
+                camera.bottom = -h / 2;
+                camera.updateProjectionMatrix();
+                renderer.setSize( w, h );
+                isDirty = true;
+			}
+
+            function onMouseDown(e) {
+                e.preventDefault();
+
+                // 只允许左键触发
+                if (e.button !== 0) return;
+
+                const pos = rayPickPosition({ camera, x: e.clientX, y: e.clientY });
+                if (!pos) return;
+
+                let bufferArray = vertexBuffer.array;
+                const len = bufferArray.length;
+                const newBufferArray = new Float32Array(len + 5);
+                for (let i = 0; i < len; i++) {
+                    newBufferArray[i] = bufferArray[i];
+                }
+                bufferArray = null;
+
+                newBufferArray[len + 0] = pos.x;
+                newBufferArray[len + 1] = pos.y;
+                newBufferArray[len + 2] = pos.z;
+                newBufferArray[len + 3] = 1;
+                newBufferArray[len + 4] = 10;
+
+                vertexBuffer = new THREE.InterleavedBuffer(newBufferArray, 5);
+
+                geometry.attributes.position.data = vertexBuffer;
+                geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.showAndSize.data = vertexBuffer;
+                geometry.attributes.showAndSize.needsUpdate = true;
+
+                isDirty = true;
+            }
+
+			function render() {
+                requestAnimationFrame(render);
+
+                stats.begin();
+                if (isDirty) {
+                    isDirty = false;
+                    renderer.render(scene, camera);
+                }
+                stats.end();
+            }
+		</script>
+	</body>
+</html>

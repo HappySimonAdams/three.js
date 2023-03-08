@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+        <meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="../../examples/main.css">
+		<title>arrow_line</title>
+	</head>
+	<body>
+		<div id="container"></div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "../examples/jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+			import * as THREE from 'three';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import Stats from 'three/addons/libs/stats.module.js';
+            import { rayPickPosition } from './common/picking.js';
+            import ArrowLine from './extends/ArrowLine.js';
+
+            let renderer, scene, camera, controls, stats;
+            let isDirty = true;
+
+			const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            let arrow;
+            const positions = [];
+
+			init();
+			render();
+
+			function init() {
+                initViewer();
+                bindEvents();
+			}
+
+            function initViewer() {
+                camera = new THREE.OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 1, 1000);
+                camera.position.set( 0, 0, 300 );
+
+                scene = new THREE.Scene();
+                scene.matrixAutoUpdate = false;
+
+                const axes = new THREE.AxesHelper(100);
+                axes.matrixAutoUpdate = false;
+                scene.add(axes);
+
+                arrow = new ArrowLine();
+                arrow.matrixAutoUpdate = false;
+                scene.add(arrow);
+
+                renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.outputEncoding = THREE.sRGBEncoding;
+                renderer.setClearColor(0x333333);
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( width, height );
+                renderer.domElement.style.touchAction = 'none';
+                document.body.appendChild( renderer.domElement );
+
+                controls = new OrbitControls( camera, renderer.domElement );
+                controls.target.set( 0, 0, 0 );
+                controls.enableRotate = false;
+                // controls.update();
+
+                stats = new Stats();
+                document.body.appendChild(stats.dom);
+            }
+
+            function bindEvents() {
+                controls.addEventListener( 'change', () => isDirty = true );
+                window.addEventListener( 'resize', onWindowResize, false );
+
+                document.body.addEventListener('mousedown', onMouseDown, false);
+                document.body.addEventListener('mousemove', onMouseMove, false);
+            }
+
+			function onWindowResize() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                camera.left = -w / 2;
+                camera.right = w / 2;
+                camera.top = h / 2;
+                camera.bottom = -h / 2;
+                camera.updateProjectionMatrix();
+                renderer.setSize( w, h );
+                isDirty = true;
+			}
+
+            function onMouseDown(e) {
+                e.preventDefault();
+
+                // 只允许左键触发
+                if (e.button !== 0) return;
+
+                const pos = rayPickPosition({ camera, x: e.clientX, y: e.clientY });
+                if (!pos) return;
+
+                if (positions.length === 0) {
+                    positions[0] = pos;
+                } else if (positions.length === 2) {
+                    positions.length = 0; // 重置
+                }
+            }
+
+            function onMouseMove(e) {
+                e.preventDefault();
+
+                if (e.movementX === 0 && e.movementY === 0) return; // 避免点击时触发mousemove
+
+                if (positions.length < 1) return;
+
+                const pos = rayPickPosition({ camera, x: e.clientX, y: e.clientY });
+                if (!pos) return;
+
+                positions[1] = pos;
+                arrow.positions = positions;
+                isDirty = true;
+            }
+
+			function render() {
+                requestAnimationFrame(render);
+
+                stats.begin();
+                if (isDirty) {
+                    isDirty = false;
+                    renderer.render(scene, camera);
+                }
+                stats.end();
+            }
+		</script>
+	</body>
+</html>
