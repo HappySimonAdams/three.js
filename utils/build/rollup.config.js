@@ -1,4 +1,4 @@
-import terser from '@rollup/plugin-terser';
+// import terser from '@rollup/plugin-terser';
 
 export function glconstants() {
 
@@ -294,57 +294,57 @@ const builds = [
 			}
 		]
 	},
-	{
-		input: 'src/Three.js',
-		plugins: [
-			addons(),
-			glsl(),
-			header()
-		],
-		output: [
-			{
-				format: 'cjs',
-				name: 'THREE',
-				file: 'build/three.cjs',
-				indent: '\t'
-			}
-		]
-	},
-	{
-		input: 'src/Three.js',
-		plugins: [
-			addons(),
-			glsl(),
-			header(),
-			deprecationWarning()
-		],
-		output: [
-			{
-				format: 'umd',
-				name: 'THREE',
-				file: 'build/three.js',
-				indent: '\t'
-			}
-		]
-	},
-	{
-		input: 'src/Three.js',
-		plugins: [
-			addons(),
-			glconstants(),
-			glsl(),
-			terser(),
-			header(),
-			deprecationWarning()
-		],
-		output: [
-			{
-				format: 'umd',
-				name: 'THREE',
-				file: 'build/three.min.js'
-			}
-		]
-	}
+	// {
+	// 	input: 'src/Three.js',
+	// 	plugins: [
+	// 		addons(),
+	// 		glsl(),
+	// 		header()
+	// 	],
+	// 	output: [
+	// 		{
+	// 			format: 'cjs',
+	// 			name: 'THREE',
+	// 			file: 'build/three.cjs',
+	// 			indent: '\t'
+	// 		}
+	// 	]
+	// },
+	// {
+	// 	input: 'src/Three.js',
+	// 	plugins: [
+	// 		addons(),
+	// 		glsl(),
+	// 		header(),
+	// 		deprecationWarning()
+	// 	],
+	// 	output: [
+	// 		{
+	// 			format: 'umd',
+	// 			name: 'THREE',
+	// 			file: 'build/three.js',
+	// 			indent: '\t'
+	// 		}
+	// 	]
+	// },
+	// {
+	// 	input: 'src/Three.js',
+	// 	plugins: [
+	// 		addons(),
+	// 		glconstants(),
+	// 		glsl(),
+	// 		terser(),
+	// 		header(),
+	// 		deprecationWarning()
+	// 	],
+	// 	output: [
+	// 		{
+	// 			format: 'umd',
+	// 			name: 'THREE',
+	// 			file: 'build/three.min.js'
+	// 		}
+	// 	]
+	// }
 ];
 
 export default ( args ) => args.configOnlyModule ? builds[ 0 ] : builds;
