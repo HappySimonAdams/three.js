@@ -335,7 +335,7 @@
                 y: event.clientY,
                 pickSize: 5,
             });
-            console.log(pickId);
+            console.log(pickId, pickIdColor);
             outlinePass.uniforms.pickIdColor.value.fromArray(pickIdColor);
             isDirty = true;
         }
