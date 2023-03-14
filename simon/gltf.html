@@ -86,8 +86,9 @@
                 // scene.add(gltf.scene);
                 // isDirty = true;
 
-                const gltfLoader = new GLTFLoader().setPath('models/gltf/drawing_test1/');
-                const gltf = await gltfLoader.loadAsync('drawing.gltf');
+                const gltfLoader = new GLTFLoader().setPath('models/gltf/triangle/');
+                const gltf = await gltfLoader.loadAsync('triangle.gltf');
+                gltf.scene.scale.setScalar(100);
                 console.log(gltf)
                 scene.add(gltf.scene);
                 isDirty = true;
