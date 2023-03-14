@@ -1,3 +1,4 @@
+import resolve from '@rollup/plugin-node-resolve';
 // import terser from '@rollup/plugin-terser';
 
 export function glconstants() {
@@ -291,6 +292,18 @@ const builds = [
 			{
 				format: 'esm',
 				file: 'build/three.module.js'
+			}
+		]
+	},
+    {
+		input: 'simon/libs/troika.js',
+		plugins: [
+			resolve()
+		],
+		output: [
+			{
+				format: 'esm',
+				file: 'build/troika.module.js'
 			}
 		]
 	},

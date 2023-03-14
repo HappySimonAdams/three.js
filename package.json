@@ -118,5 +118,8 @@
       "build/three.module.js"
     ],
     "directories": {}
+  },
+  "dependencies": {
+    "troika-three-text": "^0.47.1"
   }
 }
