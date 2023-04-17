@@ -81,7 +81,8 @@
 
 				// draw white background
 
-				drawingContext.fillStyle = '#FFFFFF';
+				// drawingContext.fillStyle = '#FFFFFF';
+				drawingContext.fillStyle = 'rgba(255, 255, 255, 0)';
 				drawingContext.fillRect( 0, 0, 128, 128 );
 
 				// set canvas as material.map (this could be done to any map, bump, displacement etc.)
@@ -123,7 +124,8 @@
 			function draw( drawContext, x, y ) {
 
 				drawContext.moveTo( drawStartPos.x, drawStartPos.y );
-				drawContext.strokeStyle = '#000000';
+				// drawContext.strokeStyle = '#000000';
+				drawContext.strokeStyle = '#ffffff';
 				drawContext.lineTo( x, y );
 				drawContext.stroke();
 				// reset drawing start position to current position.

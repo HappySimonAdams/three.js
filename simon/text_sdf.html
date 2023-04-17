@@ -49,7 +49,9 @@
         let textMesh;
         let isDirty = false;
 
-        const fontUrl = './fonts/msyhl_mini.ttf' // 微软雅黑细体
+        // const fontUrl = './fonts/msyhl_mini.ttf' // 微软雅黑细体
+        // const fontUrl = './fonts/simfang_min.woff'
+        const fontUrl = './fonts/FZFSJW_min.woff'
 
         init();
         render();
@@ -95,7 +97,7 @@
                 'test0': '12340', // 注意：要与上面的文字一样
                 'test1': '测量标注文字：面积周长m²°12340.0000',
                 'test2': '此处图元缺失',
-                'test3': '多文字测试多文字测试多文字测试多文字测试多文\n字测试多文字测试多文字测试多文字测试多文字测试' 
+                'test3': `多文字测试多文字测试多文字测试多文字测试多文字测试多文字测试多文字测试多文字测试多文字测试`
             }).name('切换文字').onChange(updateText);
 
             gui.add(guiData, 'anchorY', [

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="../../examples/main.css">
+    <title>canvas文字</title>
+    <style>
+        #canvas {
+            position: fixed;
+            top: 0;
+            right: 0;
+            border: 1px solid red;
+        }
+        #toolbar {
+            position: absolute;
+            left: 50%;
+            top: 10px;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="toolbar">
+        <button id="screenshot">screenshot</button>
+        <button id="updateText">updateText</button>
+    </div>
+
+    <!-- Import maps polyfill -->
+    <!-- Remove this when import maps will be widely supported -->
+    <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/plugins/": "../examples/jsm/"
+            }
+        }
+    </script>
+
+    <script>
+        CanvasRenderingContext2D.prototype.wrapText = function(text, x, y, maxWidth, lineHeight) {
+            const arrText = text.split('');
+            let line = '';
+
+            // 每个循环累加字符
+            for (let i = 0; i < arrText.length; i++) {
+                let testLine = line + arrText[i];
+                // 检测累加字符 获取累加字符的高度和宽度
+                const testWidth = this.measureText(testLine).width;
+
+                if (arrText[i] === '\n') {
+                    // 换行符
+
+                    this.fillText(line, x, y);
+                    line = '';
+                    y += lineHeight;
+                } else if (testWidth > maxWidth && i > 0) {
+                    // 如果累加字符的宽度大于定义的绘制文本最大宽度 则绘制累加字符的文本 并且设置换行间距再次进行绘制
+
+                    this.fillText(line, x, y);
+                    line = arrText[i];
+                    y += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            this.fillText(line, x, y);
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/plugins/controls/OrbitControls.js';
+        import Stats from 'three/plugins/libs/stats.module.js';
+        import getThresholdByPixel from './common/getThresholdByPixel.js';
+        import screenshot from './common/screenshot.js';
+
+        let renderer, scene, camera, controls, stats;
+        let canvas, ctx, textMesh;
+        let isDirty = false;
+        let width, height;
+        
+        const fontSize = 16;
+        const lineHeight = 20;
+
+        init();
+        render();
+
+        function init() {
+            const aspect = window.innerWidth / window.innerHeight;
+            // camera = new THREE.PerspectiveCamera( 45, aspect, 1, 1000 );
+            const frustumSize = 40;
+            camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 100000);
+            camera.position.set( 0, 2, 50000 );
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color( 0x333333 );
+            scene.add(new THREE.AxesHelper(20));
+
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            // controls.update();
+
+            stats = new Stats();
+            document.body.appendChild(stats.dom);
+
+            controls.addEventListener( 'change', () => isDirty = true );
+            window.addEventListener( 'resize', onWindowResize );
+
+            initText();
+        }
+
+        function initText() {
+            width = 240;
+            height = 200;
+
+            canvas = document.getElementById('canvas');
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+
+            ctx = canvas.getContext('2d');
+            ctx.font = `${fontSize * 2}px Arial`;
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#00eeee';
+            // ctx.fillText('sdtest', 0, 0);
+            const text = '大声道李开复阿斯蒂芬阿萨德李开复ads法兰克福到家了\n开始阶段发';
+            ctx.wrapText(text, 0, 2, width * 2, lineHeight * 2);
+
+            const geometry = new THREE.PlaneGeometry();
+            const material = new THREE.MeshBasicMaterial({
+                transparent: true,
+                map: new THREE.CanvasTexture(canvas),
+            });
+            textMesh = new THREE.Mesh(geometry, material);
+            const worldWidth = getThresholdByPixel({ container: document.body, camera, pixel: width });
+            const worldHeight = worldWidth * height / width;
+            textMesh.scale.set(worldWidth, worldHeight, 1);
+            scene.add(textMesh);
+            isDirty = true;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            isDirty = true;
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+
+            stats.begin();
+            if (isDirty) {
+                isDirty = false;
+                renderer.render( scene, camera );
+            }
+            stats.end();
+        }
+
+        document.getElementById('updateText').onclick = () => {
+            ctx.clearRect(0, 0, width * 2, height * 2);
+
+            width = 240;
+            height = 200;
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+
+            ctx.font = `${fontSize * 2}px Arial`;
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#00eeee';
+            const text = '文字测试文字测试\n文字测试文字测试文字测试文字测试文字测试';
+            ctx.wrapText(text, 0, 2, width * 2, lineHeight * 2);
+
+            const worldWidth = getThresholdByPixel({ container: document.body, camera, pixel: width });
+            const worldHeight = worldWidth * height / width;
+            console.log(worldWidth, worldHeight);
+            textMesh.scale.set(worldWidth, worldHeight, 1);
+            // NOTE: canvas宽高会变化，所以需要重新创建纹理
+            textMesh.material.map = new THREE.CanvasTexture(canvas);
+            // textMesh.material.map.needsUpdate = true;
+            isDirty = true;
+        };
+
+        document.getElementById('screenshot').onclick = () => {
+            renderer.render( scene, camera );
+            screenshot({ renderer });
+        };
+
+        window.renderer = renderer;
+    </script>
+</body>
+</html>

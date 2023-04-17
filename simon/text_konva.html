@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="../../examples/main.css">
+    <title>konva文字</title>
+    <style>
+        #konva {
+            display: none;
+        }
+        #toolbar {
+            position: absolute;
+            left: 50%;
+            top: 10px;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="konva"></div>
+    <div id="toolbar">
+        <button id="screenshot">screenshot</button>
+        <button id="updateText">updateText</button>
+    </div>
+
+    <!-- <script src="https://unpkg.com/konva@8.4.3/konva.min.js"></script> -->
+    <script src="../simon/libs/konva.min.js"></script>
+    
+    <!-- Import maps polyfill -->
+    <!-- Remove this when import maps will be widely supported -->
+    <!-- <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script> -->
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/plugins/": "../examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/plugins/controls/OrbitControls.js';
+        import Stats from 'three/plugins/libs/stats.module.js';
+        import getThresholdByPixel from './common/getThresholdByPixel.js';
+        import screenshot from './common/screenshot.js';
+
+        let renderer, scene, camera, controls, stats;
+        let stage, layer, text;
+        let textMesh;
+        let isDirty = false;
+
+        init();
+        render();
+
+        function init() {
+            const aspect = window.innerWidth / window.innerHeight;
+            // camera = new THREE.PerspectiveCamera( 45, aspect, 1, 1000 );
+            const frustumSize = 40;
+            camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 100000);
+            camera.position.set( 0, 2, 50000 );
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color( 0xf0f0f0 );
+            scene.add(new THREE.AxesHelper(20));
+
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            // controls.update();
+
+            stats = new Stats();
+            document.body.appendChild(stats.dom);
+
+            controls.addEventListener( 'change', () => isDirty = true );
+            window.addEventListener( 'resize', onWindowResize );
+
+            initText();
+        }
+
+        function initText() {
+            const width = 240;
+            const height = 400;
+
+            stage = new Konva.Stage({
+                container: 'konva',
+                width,
+                height,
+            });
+
+            layer = new Konva.Layer();
+            stage.add(layer);
+
+            text = new Konva.Text({
+                x: 0,
+                y: 0,
+                text: "的发生地方dsafkjdsakfjsalkd的了卡萨丁激发斯蒂芬阿斯蒂芬第三方",
+                fontFamily: 'Arial',
+                // fontFamily: 'Microsoft YaHei',
+                fontSize: 16,
+                fill: '#555',
+                width,
+                height,
+                lineHeight: 1.5,
+                // padding: 20,
+                // align: 'center',
+            });
+            layer.add(text);
+            
+            const geometry = new THREE.PlaneGeometry();
+            const material = new THREE.MeshBasicMaterial({
+                transparent: true,
+                map: new THREE.CanvasTexture(layer.toCanvas()),
+            });
+            textMesh = new THREE.Mesh(geometry, material);
+            const worldWidth = getThresholdByPixel({ container: document.body, camera, pixel: width });
+            const worldHeight = worldWidth * height / width;
+            textMesh.scale.set(worldWidth, worldHeight, 1);
+
+            // textMesh = new THREE.Sprite(new THREE.SpriteMaterial({
+            //     map: new THREE.CanvasTexture(layer.toCanvas())
+            // }));
+            // textMesh.scale.setScalar(24, 40, 1);
+
+            scene.add(textMesh);
+            isDirty = true;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            isDirty = true;
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+
+            stats.begin();
+            if (isDirty) {
+                isDirty = false;
+                renderer.render( scene, camera );
+            }
+            stats.end();
+        }
+
+        document.getElementById('updateText').onclick = () => {
+            const width = 200;
+            const height = 300;
+
+            stage.clear();
+            stage.width(width);
+            stage.height(height);
+            text.width(width);
+            text.height(height);
+            text.text('的发生地方大声道第三方范德萨地方的事发地时');
+
+            const worldWidth = getThresholdByPixel({ container: document.body, camera, pixel: width });
+            const worldHeight = worldWidth * height / width;
+            console.log(worldWidth, worldHeight);
+            textMesh.scale.set(worldWidth, worldHeight, 1);
+            textMesh.material.map = new THREE.CanvasTexture(layer.toCanvas());
+            // textMesh.material.map.needsUpdate = true;
+            isDirty = true;
+        };
+
+        document.getElementById('screenshot').onclick = () => {
+            renderer.render( scene, camera );
+            screenshot({ renderer });
+        };
+
+        window.renderer = renderer;
+    </script>
+</body>
+</html>
