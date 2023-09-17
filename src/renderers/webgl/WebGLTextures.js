@@ -40,6 +40,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		// Use OffscreenCanvas when available. Specially needed in web workers
 
+		console.log( 'texture useOffscreenCanvas: ', useOffscreenCanvas );
+
 		return useOffscreenCanvas ?
 			// eslint-disable-next-line compat/compat
 			new OffscreenCanvas( width, height ) : createElementNS( 'canvas' );
@@ -180,7 +182,18 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			if ( glType === _gl.FLOAT ) internalFormat = _gl.RGBA32F;
 			if ( glType === _gl.HALF_FLOAT ) internalFormat = _gl.RGBA16F;
-			if ( glType === _gl.UNSIGNED_BYTE ) internalFormat = ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
+			if ( glType === _gl.UNSIGNED_BYTE ) {
+
+				internalFormat = ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
+
+				if ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) {
+
+					console.log( 'texture internalFormat: SRGB8_ALPHA8' );
+
+				}
+
+			}
+
 			if ( glType === _gl.UNSIGNED_SHORT_4_4_4_4 ) internalFormat = _gl.RGBA4;
 			if ( glType === _gl.UNSIGNED_SHORT_5_5_5_1 ) internalFormat = _gl.RGB5_A1;
 
@@ -253,6 +266,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			_videoTextures.delete( texture );
 
 		}
+
+		console.log( 'texture disposed' );
 
 	}
 
@@ -628,6 +643,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			if ( texture.anisotropy > 1 || properties.get( texture ).__currentAnisotropy ) {
 
+				console.log( 'texture anisotropy: ', Math.min( texture.anisotropy, capabilities.getMaxAnisotropy() ) );
+
 				_gl.texParameterf( textureType, extension.TEXTURE_MAX_ANISOTROPY_EXT, Math.min( texture.anisotropy, capabilities.getMaxAnisotropy() ) );
 				properties.get( texture ).__currentAnisotropy = texture.anisotropy;
 
@@ -698,8 +715,15 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				webglTextures[ textureProperties.__cacheKey ].usedTimes --;
 
+				if ( webglTexture.usedTimes > 0 ) {
+
+					console.log( 'texture usedTimes > 1 ', _sources );
+
+				}
+
 				if ( webglTexture.usedTimes === 0 ) {
 
+					console.log( 'delete texture' );
 					deleteTexture( texture );
 
 				}
@@ -725,6 +749,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
+		console.log( 'texture forceUpload', forceUpload );
 		const source = texture.source;
 
 		state.bindTexture( textureType, textureProperties.__webglTexture, _gl.TEXTURE0 + slot );
@@ -758,6 +783,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			const useTexStorage = ( isWebGL2 && texture.isVideoTexture !== true );
 			const allocateMemory = ( sourceProperties.__version === undefined ) || ( forceUpload === true );
 			const levels = getMipLevels( texture, image, supportsMips );
+
+			// console.log( 'texture allocateMemory: ', allocateMemory );
 
 			if ( texture.isDepthTexture ) {
 
@@ -1096,6 +1123,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 					texture.generateMipmaps = false;
 
+					console.log( 'texture manual generateMipmap' );
+
+
 				} else {
 
 					if ( useTexStorage ) {
@@ -1119,6 +1149,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			}
 
 			if ( textureNeedsGenerateMipmaps( texture, supportsMips ) ) {
+
+				console.log( 'texture mipmaps levels: ', levels );
+				console.log( 'texture gl generateMipmap' );
 
 				generateMipmap( textureType );
 
