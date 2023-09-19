@@ -13,6 +13,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 	const multisampledRTTExt = extensions.has( 'WEBGL_multisampled_render_to_texture' ) ? extensions.get( 'WEBGL_multisampled_render_to_texture' ) : null;
 	const supportsInvalidateFramebuffer = typeof navigator === 'undefined' ? false : /OculusBrowser/g.test( navigator.userAgent );
 
+	console.log( 'extension(WEBGL_multisampled_render_to_texture): ', multisampledRTTExt );
+
 	const _videoTextures = new WeakMap();
 	let _canvas;
 
@@ -40,7 +42,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		// Use OffscreenCanvas when available. Specially needed in web workers
 
-		console.log( 'texture useOffscreenCanvas: ', useOffscreenCanvas );
+		console.log( 'createCanvas() useOffscreenCanvas: ', useOffscreenCanvas );
 
 		return useOffscreenCanvas ?
 			// eslint-disable-next-line compat/compat
@@ -180,15 +182,27 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		if ( glFormat === _gl.RGBA ) {
 
-			if ( glType === _gl.FLOAT ) internalFormat = _gl.RGBA32F;
-			if ( glType === _gl.HALF_FLOAT ) internalFormat = _gl.RGBA16F;
+			if ( glType === _gl.FLOAT ) {
+
+				internalFormat = _gl.RGBA32F;
+				console.log( 'internalFormat: gl.RGBA32F' );
+
+			}
+
+			if ( glType === _gl.HALF_FLOAT ) {
+
+				internalFormat = _gl.RGBA16F;
+				console.log( 'internalFormat: gl.RGBA16F' );
+
+			}
+
 			if ( glType === _gl.UNSIGNED_BYTE ) {
 
 				internalFormat = ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
 
 				if ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) {
 
-					console.log( 'texture internalFormat: SRGB8_ALPHA8' );
+					console.log( 'internalFormat: gl.SRGB8_ALPHA8' );
 
 				}
 
@@ -267,7 +281,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		}
 
-		console.log( 'texture disposed' );
+		console.log( `texture${texture.id} disposed` );
 
 	}
 
@@ -749,7 +763,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
-		console.log( 'texture forceUpload', forceUpload );
+		console.log( `texture${texture.id} forceUpload`, forceUpload );
 		const source = texture.source;
 
 		state.bindTexture( textureType, textureProperties.__webglTexture, _gl.TEXTURE0 + slot );
@@ -783,8 +797,6 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			const useTexStorage = ( isWebGL2 && texture.isVideoTexture !== true );
 			const allocateMemory = ( sourceProperties.__version === undefined ) || ( forceUpload === true );
 			const levels = getMipLevels( texture, image, supportsMips );
-
-			// console.log( 'texture allocateMemory: ', allocateMemory );
 
 			if ( texture.isDepthTexture ) {
 
@@ -1123,7 +1135,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 					texture.generateMipmaps = false;
 
-					console.log( 'texture manual generateMipmap' );
+					console.log( `texture${texture.id} manual generateMipmap` );
 
 
 				} else {
@@ -1150,8 +1162,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			if ( textureNeedsGenerateMipmaps( texture, supportsMips ) ) {
 
-				console.log( 'texture mipmaps levels: ', levels );
-				console.log( 'texture gl generateMipmap' );
+				console.log( `texture${texture.id} mipmaps levels: `, levels );
+				console.log( `texture${texture.id} gl generateMipmap` );
 
 				generateMipmap( textureType );
 

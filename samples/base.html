@@ -100,7 +100,7 @@
 			requestAnimationFrame( render );
 
 			const now = performance.now();
-			if ( now - lastTime < 16 ) return;
+			if ( now - lastTime < 10 ) return;
 			lastTime = now;
 
 			stats.begin();
@@ -115,6 +115,9 @@
 			stats.end();
 
 		}
+
+		window.renderer = renderer;
+		window.scene = scene;
 	</script>
 </body>
 </html>
