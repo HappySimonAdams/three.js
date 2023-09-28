@@ -72,17 +72,26 @@ function WebGLCapabilities( gl, extensions, parameters ) {
 	const maxVertexTextures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
 	const maxTextureSize = gl.getParameter( gl.MAX_TEXTURE_SIZE );
 	const maxCubemapSize = gl.getParameter( gl.MAX_CUBE_MAP_TEXTURE_SIZE );
+	console.log( 'gl.MAX_TEXTURE_IMAGE_UNITS: ', maxTextures );
+	console.log( 'gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS: ', maxVertexTextures );
+	console.log( 'gl.MAX_TEXTURE_SIZE: ', maxTextureSize );
+	console.log( 'gl.MAX_CUBE_MAP_TEXTURE_SIZE: ', maxCubemapSize );
 
 	const maxAttributes = gl.getParameter( gl.MAX_VERTEX_ATTRIBS );
 	const maxVertexUniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
 	const maxVaryings = gl.getParameter( gl.MAX_VARYING_VECTORS );
 	const maxFragmentUniforms = gl.getParameter( gl.MAX_FRAGMENT_UNIFORM_VECTORS );
+	console.log( 'gl.MAX_VERTEX_ATTRIBS: ', maxAttributes );
+	console.log( 'gl.MAX_VERTEX_UNIFORM_VECTORS: ', maxVertexUniforms );
+	console.log( 'gl.MAX_FRAGMENT_UNIFORM_VECTORS: ', maxFragmentUniforms );
+	console.log( 'gl.MAX_VARYING_VECTORS: ', maxVaryings );
 
 	const vertexTextures = maxVertexTextures > 0;
 	const floatFragmentTextures = isWebGL2 || extensions.has( 'OES_texture_float' );
 	const floatVertexTextures = vertexTextures && floatFragmentTextures;
 
 	const maxSamples = isWebGL2 ? gl.getParameter( gl.MAX_SAMPLES ) : 0;
+	console.log( 'gl.MAX_SAMPLES', maxSamples );
 
 	return {
 

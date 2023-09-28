@@ -1508,9 +1508,12 @@ class WebGLRenderer {
 
 			}
 
+			// console.log( 'proprogramCacheKey: ', programCacheKey );
 			let program = programs.get( programCacheKey );
 
 			if ( program !== undefined ) {
+
+				console.log( `program${program.id}重复获取, 可能是设置了material.needsUpdate=true, 但材质没有任何更改` );
 
 				// early out if program and light state is identical
 
@@ -1580,8 +1583,12 @@ class WebGLRenderer {
 
 			}
 
+			console.log( `material${material.id} m_unforms: `, uniforms );
+
 			const progUniforms = program.getUniforms();
+			console.log( `material${material.id} => program${program.id} p_uniforms: `, progUniforms );
 			const uniformsList = WebGLUniforms.seqWithValue( progUniforms.seq, uniforms );
+			console.log( 'm_unforms与p_uniform的交集: ', uniformsList );
 
 			materialProperties.currentProgram = program;
 			materialProperties.uniformsList = uniformsList;
@@ -1756,6 +1763,7 @@ class WebGLRenderer {
 
 			if ( needsProgramChange === true ) {
 
+				console.log( `material${material.id} needsProgramChange: `, needsProgramChange, '----------------------------' );
 				program = getProgram( material, scene, object );
 
 			}
@@ -1769,6 +1777,7 @@ class WebGLRenderer {
 
 			if ( state.useProgram( program.program ) ) {
 
+				console.log( `material${material.id} => program${program.id} gl.useProgram()` );
 				refreshProgram = true;
 				refreshMaterial = true;
 				refreshLights = true;
@@ -1838,6 +1847,8 @@ class WebGLRenderer {
 			// otherwise textures used for skinning and morphing can take over texture units reserved for other material textures
 
 			if ( object.isSkinnedMesh ) {
+
+				console.log( '设置 SkinnedMesh 的 uniform 值' );
 
 				p_uniforms.setOptional( _gl, object, 'bindMatrix' );
 				p_uniforms.setOptional( _gl, object, 'bindMatrixInverse' );
@@ -2067,6 +2078,8 @@ class WebGLRenderer {
 
 				if ( renderTargetProperties.__useDefaultFramebuffer !== undefined ) {
 
+					console.log( '__useDefaultFramebuffer: ', renderTargetProperties.__useDefaultFramebuffer );
+
 					// We need to make sure to rebind the framebuffer.
 					state.bindFramebuffer( _gl.FRAMEBUFFER, null );
 					useDefaultFramebuffer = false;
@@ -2076,6 +2089,8 @@ class WebGLRenderer {
 					textures.setupRenderTarget( renderTarget );
 
 				} else if ( renderTargetProperties.__hasExternalTextures ) {
+
+					console.log( '__hasExternalTextures: ', renderTargetProperties.__hasExternalTextures );
 
 					// Color and depth texture must be rebound in order for the swapchain to update.
 					textures.rebindTextures( renderTarget, properties.get( renderTarget.texture ).__webglTexture, properties.get( renderTarget.depthTexture ).__webglTexture );

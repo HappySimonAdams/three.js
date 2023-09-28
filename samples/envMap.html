@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>base sample</title>
+	<title>envMap sample</title>
 	<link type="text/css" rel="stylesheet" href="../examples/main.css">
 </head>
 <body>
@@ -25,14 +25,16 @@
 			AxesHelper,
 			BoxGeometry,
 			MeshBasicMaterial,
+			MeshStandardMaterial,
 			Mesh,
+			CubeTextureLoader,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
-		let mesh;
+		let mesh, cubeTexture;
 		let isDirty = true;
 		let lastTime = performance.now();
 
@@ -61,6 +63,10 @@
 			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
 			scene.matrixWorldAutoUpdate = false;
 
+			cubeTexture = new CubeTextureLoader().setPath( '../examples/textures/cube/Bridge2/' ).load( [ 'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg' ], () => isDirty = true );
+			// scene.environment = cubeTexture;
+			// scene.background = cubeTexture;
+
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
 			// scene.add( axes );
@@ -86,26 +92,13 @@
 
 		function initObjects() {
 
-			/* TODO: 多个mesh共用一个geometry；多个mesh共用一个material */
 			const geometry = new BoxGeometry();
-			const material = new MeshBasicMaterial( { color: 0x009999 } );
+			const material = new MeshBasicMaterial( { envMap: cubeTexture } );
+			// const material = new MeshStandardMaterial( { } );
 			mesh = new Mesh( geometry, material );
-			mesh.name = 'mesh';
 			mesh.matrixAutoUpdate = false;
 			mesh.updateMatrix();
-			// mesh.renderOrder = 2;
 			scene.add( mesh );
-
-			const mesh2 = new Mesh( geometry, new MeshBasicMaterial( { color: 0x990099 } ) );
-			// const mesh2 = mesh.clone();
-			mesh2.name = 'mesh2';
-			mesh2.matrixAutoUpdate = false;
-			mesh2.position.x = - 2;
-			mesh2.updateMatrix();
-			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-			mesh2.updateMatrixWorld();
-			// mesh2.renderOrder = 1;
-			scene.add( mesh2 );
 
 		}
 

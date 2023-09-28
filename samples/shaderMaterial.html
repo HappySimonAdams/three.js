@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>base sample</title>
+	<title>shaderMaterial sample</title>
 	<link type="text/css" rel="stylesheet" href="../examples/main.css">
 </head>
 <body>
@@ -23,9 +23,15 @@
 			Scene,
 			WebGLRenderer,
 			AxesHelper,
+			BufferGeometry,
 			BoxGeometry,
+			Float32BufferAttribute,
+			Uint8BufferAttribute,
 			MeshBasicMaterial,
+			ShaderMaterial,
+			RawShaderMaterial,
 			Mesh,
+			GLSL3,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -86,26 +92,85 @@
 
 		function initObjects() {
 
-			/* TODO: 多个mesh共用一个geometry；多个mesh共用一个material */
-			const geometry = new BoxGeometry();
-			const material = new MeshBasicMaterial( { color: 0x009999 } );
+			// const geometry = new BoxGeometry();
+
+			const geometry = new BufferGeometry();
+			const positions = [
+				- 1.0, - 1.0, 0.0,
+				 1.0, - 1.0, 0.0,
+				 0.0, 1.0, 0.0,
+			];
+			const colors = [
+				1, 0, 0, 1,
+				0, 1, 0, 1,
+				0, 0, 1, 1,
+			];
+			const positionAttribute = new Float32BufferAttribute( positions, 3 );
+			const colorAttribute = new Uint8BufferAttribute( colors, 4 );
+			geometry.setAttribute( 'position', positionAttribute );
+			geometry.setAttribute( 'color', colorAttribute );
+		
+			const material = new ShaderMaterial( {
+				glslVersion: GLSL3,
+				vertexShader: `
+in vec4 color;
+
+out vec4 vColor;
+
+void main() {
+	vColor = color;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+				`,
+				fragmentShader: `
+in vec4 vColor;
+
+out vec4 outColor;
+
+void main() {
+	outColor = vColor;
+}
+				`,
+			} );
+
+			/* NOTE: 内置的uniforms和attributes的定义不会自动添加到GLSL shader代码中 */
+			/* const material = new RawShaderMaterial( {
+				glslVersion: GLSL3,
+				vertexShader: `
+precision highp float;
+precision highp int;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+in vec3 position;
+in vec4 color;
+
+out vec4 vColor;
+
+void main() {
+	vColor = color;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+				`,
+				fragmentShader: `
+precision highp float;
+precision highp int;
+
+in vec4 vColor;
+
+out vec4 outColor;
+
+void main() {
+	outColor = vColor;
+}
+				`,
+			} ); */
+		
 			mesh = new Mesh( geometry, material );
-			mesh.name = 'mesh';
 			mesh.matrixAutoUpdate = false;
 			mesh.updateMatrix();
-			// mesh.renderOrder = 2;
 			scene.add( mesh );
-
-			const mesh2 = new Mesh( geometry, new MeshBasicMaterial( { color: 0x990099 } ) );
-			// const mesh2 = mesh.clone();
-			mesh2.name = 'mesh2';
-			mesh2.matrixAutoUpdate = false;
-			mesh2.position.x = - 2;
-			mesh2.updateMatrix();
-			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-			mesh2.updateMatrixWorld();
-			// mesh2.renderOrder = 1;
-			scene.add( mesh2 );
 
 		}
 

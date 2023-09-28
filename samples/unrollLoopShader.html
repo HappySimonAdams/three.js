@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>base sample</title>
+	<title>unrollLoop sample</title>
 	<link type="text/css" rel="stylesheet" href="../examples/main.css">
 </head>
 <body>
@@ -18,23 +18,29 @@
 
 	<script type="module">
 		import {
-			OrthographicCamera,
+			// OrthographicCamera,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
 			AxesHelper,
-			BoxGeometry,
-			MeshBasicMaterial,
+			BufferGeometry,
+			Float32BufferAttribute,
+			Uint8BufferAttribute,
+			// ShaderMaterial,
+			RawShaderMaterial,
 			Mesh,
+			GLSL3,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
-		let mesh;
+		let material;
 		let isDirty = true;
 		let lastTime = performance.now();
+		let vertexShader, fragmentShader;
+		let loopCount = 3;
 
 		const width = window.innerWidth;
 		const height = window.innerHeight;
@@ -86,26 +92,77 @@
 
 		function initObjects() {
 
-			/* TODO: 多个mesh共用一个geometry；多个mesh共用一个material */
-			const geometry = new BoxGeometry();
-			const material = new MeshBasicMaterial( { color: 0x009999 } );
-			mesh = new Mesh( geometry, material );
-			mesh.name = 'mesh';
+			// const geometry = new BoxGeometry();
+
+			const geometry = new BufferGeometry();
+			const positions = [
+				- 1.0, - 1.0, 0.0,
+				 1.0, - 1.0, 0.0,
+				 0.0, 1.0, 0.0,
+			];
+			const colors = [
+				1, 0, 0, 1,
+				0, 1, 0, 1,
+				0, 0, 1, 1,
+			];
+			const positionAttribute = new Float32BufferAttribute( positions, 3 );
+			const colorAttribute = new Uint8BufferAttribute( colors, 4 );
+			geometry.setAttribute( 'position', positionAttribute );
+			geometry.setAttribute( 'color', colorAttribute );
+
+			vertexShader = `
+precision highp float;
+// precision highp int;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+in vec3 position;
+in vec4 color;
+
+out vec4 vColor;
+
+void main() {
+	vColor = color;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}`;
+
+			fragmentShader = `
+precision highp float;
+// precision highp int;
+
+in vec4 vColor;
+
+out vec4 fragColor;
+
+void main() {
+	/* NOTE: 展开for循环测试 */
+
+	vec3 color = vColor.rgb;
+
+	#pragma unroll_loop_start
+	for ( int i = 0; i < LOOP_COUNT; i ++ ) {
+		// color *= float(1 - UNROLLED_LOOP_INDEX / LOOP_COUNT); /* NOTE: 先计算再转float有问题 */
+		color *= (1.0 - float(UNROLLED_LOOP_INDEX) / float(LOOP_COUNT)) * 2.0;
+	}
+	#pragma unroll_loop_end
+
+	fragColor = vec4(color, vColor.a);
+}`;
+		
+			/* NOTE: 内置的uniforms和attributes的定义不会自动添加到GLSL shader代码中 */
+			material = new RawShaderMaterial( {
+				glslVersion: GLSL3,
+				vertexShader,
+				fragmentShader,
+			} );
+			material.fragmentShader = fragmentShader.replace( /LOOP_COUNT/g, loopCount );
+			// console.log( material.fragmentShader );
+		
+			const mesh = new Mesh( geometry, material );
 			mesh.matrixAutoUpdate = false;
 			mesh.updateMatrix();
-			// mesh.renderOrder = 2;
 			scene.add( mesh );
-
-			const mesh2 = new Mesh( geometry, new MeshBasicMaterial( { color: 0x990099 } ) );
-			// const mesh2 = mesh.clone();
-			mesh2.name = 'mesh2';
-			mesh2.matrixAutoUpdate = false;
-			mesh2.position.x = - 2;
-			mesh2.updateMatrix();
-			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-			mesh2.updateMatrixWorld();
-			// mesh2.renderOrder = 1;
-			scene.add( mesh2 );
 
 		}
 
@@ -113,26 +170,18 @@
 
 			const gui = new GUI();
 			const gui_options = {
-				'translate': () => {
-
-					mesh.position.x = 2;
-					mesh.updateMatrix();
-					/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-					mesh.updateMatrixWorld();
-					isDirty = true;
-
-				},
-				'dispose': () => {
-
-					mesh.geometry.dispose();
-					mesh.material.dispose();
-					scene.remove( mesh );
-					isDirty = true;
-
-				}
+				'loopCount': loopCount
 			};
-			gui.add( gui_options, 'translate' );
-			gui.add( gui_options, 'dispose' );
+			gui.add( gui_options, 'loopCount', 1, 10 ).step( 1 ).onChange( ( value ) => {
+
+				if ( loopCount === value ) return;
+				loopCount = value;
+				material.fragmentShader = fragmentShader.replace( /LOOP_COUNT/g, loopCount );
+				// console.log( material.fragmentShader );
+				material.needsUpdate = true;
+				isDirty = true;
+
+			} );
 
 		}
 

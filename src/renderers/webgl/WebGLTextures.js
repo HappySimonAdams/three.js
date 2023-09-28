@@ -14,6 +14,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 	const supportsInvalidateFramebuffer = typeof navigator === 'undefined' ? false : /OculusBrowser/g.test( navigator.userAgent );
 
 	console.log( 'extension(WEBGL_multisampled_render_to_texture): ', multisampledRTTExt );
+	console.log( 'updateMultisampleRenderTarget() supportsInvalidateFramebuffer: ', supportsInvalidateFramebuffer );
 
 	const _videoTextures = new WeakMap();
 	let _canvas;
@@ -182,32 +183,12 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		if ( glFormat === _gl.RGBA ) {
 
-			if ( glType === _gl.FLOAT ) {
-
-				internalFormat = _gl.RGBA32F;
-				console.log( 'internalFormat: gl.RGBA32F' );
-
-			}
-
-			if ( glType === _gl.HALF_FLOAT ) {
-
-				internalFormat = _gl.RGBA16F;
-				console.log( 'internalFormat: gl.RGBA16F' );
-
-			}
-
-			if ( glType === _gl.UNSIGNED_BYTE ) {
-
-				internalFormat = ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
-
-				if ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) {
-
-					console.log( 'internalFormat: gl.SRGB8_ALPHA8' );
-
-				}
-
-			}
-
+			if ( glType === _gl.FLOAT ) internalFormat = _gl.RGBA32F;
+			if ( glType === _gl.FLOAT ) console.log( 'internalFormat: gl.RGBA32F' );
+			if ( glType === _gl.HALF_FLOAT ) internalFormat = _gl.RGBA16F;
+			if ( glType === _gl.HALF_FLOAT ) console.log( 'internalFormat: gl.RGBA16F' );
+			if ( glType === _gl.UNSIGNED_BYTE ) internalFormat = ( colorSpace === SRGBColorSpace && forceLinearTransfer === false ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
+			if ( glType === _gl.UNSIGNED_BYTE && colorSpace === SRGBColorSpace && forceLinearTransfer === false ) console.log( 'internalFormat: gl.SRGB8_ALPHA8' );
 			if ( glType === _gl.UNSIGNED_SHORT_4_4_4_4 ) internalFormat = _gl.RGBA4;
 			if ( glType === _gl.UNSIGNED_SHORT_5_5_5_1 ) internalFormat = _gl.RGB5_A1;
 
@@ -1637,6 +1618,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	// rebind framebuffer with external textures
 	function rebindTextures( renderTarget, colorTexture, depthTexture ) {
+
+		console.log( 'rebindTextures' );
 
 		const renderTargetProperties = properties.get( renderTarget );
 

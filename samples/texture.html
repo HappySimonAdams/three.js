@@ -23,7 +23,7 @@
 
 	<script type="module">
 		import {
-			OrthographicCamera,
+			// OrthographicCamera,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
@@ -40,11 +40,15 @@
 			MeshBasicMaterial,
 			Mesh,
 			WebGLRenderTarget,
+			// ColorManagement,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 		import { gpuPickId } from './common/picking.js';
+
+		/* @see https://discourse.threejs.org/t/updates-to-color-management-in-three-js-r152/50791 */
+		// ColorManagement.enabled = false;
 
 		let renderer, scene, camera, controls, stats;
 		let pickRenderTarget;
@@ -81,7 +85,6 @@
 			scene.add( axes );
 
 			renderer = new WebGLRenderer( { antialias: true } );
-			// renderer.outputColorSpace = NoColorSpace; // 默认为SRGBColorSpace
 			renderer.setClearColor( 0x333333 );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( width, height );
@@ -188,7 +191,7 @@
 			} );
 			gui.add( gui_options, 'disposePickRenderTarget' );
 
-			const texture = textures[ 2 ];
+			const texture = textures[ 1 ];
 			const textureFolder = gui.addFolder( 'texture' );
 			const textureFolder_options = {
 				'mipmaps': texture.generateMipmaps,
@@ -240,6 +243,9 @@
 			// camera.bottom = - h / 2;
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
+			/* 在picking.js中调用了setSize() */
+			// const dpr = renderer.getPixelRatio();
+			// pickRenderTarget.setSize( window.innerWidth * dpr, window.innerHeight * dpr );
 			isDirty = true;
 		
 		}
