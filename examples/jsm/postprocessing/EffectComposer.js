@@ -29,6 +29,10 @@ class EffectComposer {
 
 		} else {
 
+			/**
+			 * FIXME: this._width = renderTarget.width / this._pixelRatio 才能与上面的进行匹配
+			 * 否则当 this._pixelRatio != 1, 并调用 this.addPass() 时, pass 的尺寸会有问题
+			 */
 			this._width = renderTarget.width;
 			this._height = renderTarget.height;
 
