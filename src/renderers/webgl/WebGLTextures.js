@@ -313,6 +313,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		}
 
 		properties.remove( texture );
+		// FIXME: 删除source缓存
+		properties.remove( texture.source );
 
 	}
 
