@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>base sample</title>
+	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../src/Three.js",
+				"three/addons/": "../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			// OrthographicCamera,
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			BoxGeometry,
+			MeshBasicMaterial,
+			Mesh,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+
+		let renderer, scene, camera, controls, stats;
+		let mesh;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 1000 );
+			camera.position.set( 3, 1, 5 );
+
+			scene = new Scene();
+			scene.matrixAutoUpdate = false;
+			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
+			scene.matrixWorldAutoUpdate = false;
+
+			const axes = new AxesHelper( 10 );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+			// controls.update();
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			const geometry = new BoxGeometry();
+			const material = new MeshBasicMaterial( { color: 0x009999 } );
+			mesh = new Mesh( geometry, material );
+			mesh.name = 'mesh';
+			mesh.matrixAutoUpdate = false;
+			mesh.renderOrder = 2;
+			scene.add( mesh );
+
+			/* NOTE: 必须先渲染不可见的遮挡对象，才能遮挡后面的物体 */
+			const mesh2 = new Mesh( geometry, new MeshBasicMaterial( { color: 0x990099, colorWrite: false } ) );
+			mesh2.name = 'mesh2';
+			mesh2.matrixAutoUpdate = false;
+			mesh2.position.z = 2;
+			mesh2.scale.setScalar( 2 );
+			mesh2.updateMatrix();
+			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
+			mesh2.updateMatrixWorld();
+			// mesh2.renderOrder = 1;
+			scene.add( mesh2 );
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const gui_options = {
+				'translate': () => {
+
+					mesh.position.x = 2;
+					mesh.updateMatrix();
+					/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
+					mesh.updateMatrixWorld();
+					isDirty = true;
+
+				},
+				'dispose': () => {
+
+					mesh.geometry.dispose();
+					mesh.material.dispose();
+					scene.remove( mesh );
+					isDirty = true;
+
+				}
+			};
+			gui.add( gui_options, 'translate' );
+			gui.add( gui_options, 'dispose' );
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			// camera.left = - w / 2;
+			// camera.right = w / 2;
+			// camera.top = h / 2;
+			// camera.bottom = - h / 2;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		function render() {
+
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>
