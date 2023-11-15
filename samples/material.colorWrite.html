@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>base sample</title>
+	<title>colorWrite sample</title>
 	<link type="text/css" rel="stylesheet" href="../examples/main.css">
 </head>
 <body>
@@ -32,7 +32,7 @@
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
-		let mesh;
+		let mesh, material;
 		let isDirty = true;
 		let lastTime = performance.now();
 
@@ -87,15 +87,15 @@
 		function initObjects() {
 
 			const geometry = new BoxGeometry();
-			const material = new MeshBasicMaterial( { color: 0x009999 } );
-			mesh = new Mesh( geometry, material );
+			mesh = new Mesh( geometry, new MeshBasicMaterial( { color: 0x009999 } ) );
 			mesh.name = 'mesh';
 			mesh.matrixAutoUpdate = false;
 			mesh.renderOrder = 2;
 			scene.add( mesh );
 
-			/* NOTE: 必须先渲染不可见的遮挡对象，才能遮挡后面的物体 */
-			const mesh2 = new Mesh( geometry, new MeshBasicMaterial( { color: 0x990099, colorWrite: false } ) );
+			/* NOTE: 必须先渲染不可见的遮挡对象(即renderOrder设置为1)，才能遮挡后面的物体 */
+			material = new MeshBasicMaterial( { color: 0x990099, colorWrite: false } );
+			const mesh2 = new Mesh( geometry, material );
 			mesh2.name = 'mesh2';
 			mesh2.matrixAutoUpdate = false;
 			mesh2.position.z = 2;
@@ -112,26 +112,14 @@
 
 			const gui = new GUI();
 			const gui_options = {
-				'translate': () => {
-
-					mesh.position.x = 2;
-					mesh.updateMatrix();
-					/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-					mesh.updateMatrixWorld();
-					isDirty = true;
-
-				},
-				'dispose': () => {
-
-					mesh.geometry.dispose();
-					mesh.material.dispose();
-					scene.remove( mesh );
-					isDirty = true;
-
-				}
+				'material.coloWrite': material.colorWrite,
 			};
-			gui.add( gui_options, 'translate' );
-			gui.add( gui_options, 'dispose' );
+			gui.add( gui_options, 'material.coloWrite' ).onChange( ( value ) => {
+
+				material.colorWrite = value;
+				isDirty = true;
+
+			} );
 
 		}
 
