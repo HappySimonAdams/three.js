@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>CustomPhongMaterial sample</title>
+	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../src/Three.js",
+				"three/addons/": "../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			// OrthographicCamera,
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			PlaneGeometry,
+			TorusKnotGeometry,
+			MeshPhongMaterial,
+			RawShaderMaterial,
+			Mesh,
+			AmbientLight,
+			DirectionalLight,
+			TextureLoader,
+			SRGBColorSpace,
+			RepeatWrapping,
+			GLSL3,
+			Matrix4,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+
+		let renderer, scene, camera, controls, stats;
+		let ambientLight, directionLight, mesh;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+		
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 1000 );
+			camera.position.set( 0, 3, 6 );
+
+			scene = new Scene();
+			scene.matrixAutoUpdate = false;
+			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
+			scene.matrixWorldAutoUpdate = false;
+
+			const axes = new AxesHelper( 10 );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+			// controls.update();
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			ambientLight = new AmbientLight( 0x404040 );
+			scene.add( ambientLight );
+
+			directionLight = new DirectionalLight( 0xffffff, 1.5 );
+			directionLight.matrixAutoUpdate = false;
+			directionLight.position.set( 1, 1, 0 );
+			directionLight.updateMatrix();
+			directionLight.updateMatrixWorld();
+			scene.add( directionLight );
+
+			// const light1 = new DirectionalLight( 0xffffff, 3 );
+			// light1.position.set( 0, 200, 0 );
+			// light1.updateMatrix();
+			// light1.updateMatrixWorld();
+			// scene.add( light1 );
+
+			// const light2 = new DirectionalLight( 0xffffff, 3 );
+			// light2.position.set( 100, 200, 100 );
+			// light2.updateMatrix();
+			// light2.updateMatrixWorld();
+			// scene.add( light2 );
+
+			// const light3 = new DirectionalLight( 0xffffff, 3 );
+			// light3.position.set( - 100, - 200, - 100 );
+			// light3.updateMatrix();
+			// light3.updateMatrixWorld();
+			// scene.add( light3 );
+
+			const geometry = new PlaneGeometry( 6, 6 );
+			// const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
+
+			// const texture = new TextureLoader().load( '../examples/textures/crate.gif', () => isDirty = true );
+			// texture.colorSpace = SRGBColorSpace;
+			// texture.wrapS = RepeatWrapping;
+			// texture.wrapT = RepeatWrapping;
+			// texture.repeat.set( 4, 4 );
+
+			const material = new RawShaderMaterial( {
+				glslVersion: GLSL3,
+				uniforms: {
+					mapTransform: { value: new Matrix4() },
+				},
+				defines: {
+		
+				},
+				vertexShader: `
+precision highp float;
+precision highp int;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+
+in vec3 position;
+in vec3 normal;
+in vec2 uv;
+#if defined( USE_COLOR_ALPHA )
+	in vec4 color;
+#elif defined( USE_COLOR )
+	in vec3 color;
+#endif
+#ifdef USE_INSTANCING
+	in mat4 instanceMatrix;
+#endif
+#ifdef USE_INSTANCING_COLOR
+	in vec3 instanceColor;
+#endif
+
+out vec3 vNormal;
+out vec3 vViewPosition;
+#if defined( USE_COLOR_ALPHA )
+	out vec4 vColor;
+#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+	out vec3 vColor;
+#endif
+#ifdef USE_MAP
+	uniform mat3 mapTransform;
+	out vec2 vMapUv;
+#endif
+#ifdef USE_FOG
+	out float vFogDepth;
+#endif
+#ifndef FLAT_SHADED
+	out vec3 vNormal;
+
+	// #ifdef USE_TANGENT
+	// 	varying vec3 vTangent;
+	// 	varying vec3 vBitangent;
+	// #endif
+#endif
+
+void main() {
+	#ifdef USE_MAP
+		vMapUv = ( mapTransform * vec3( uv, 1 ) ).xy;
+	#endif
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+				`,
+				fragmentShader: `
+precision highp float;
+precision highp int;
+
+in vec4 vColor;
+
+out vec4 outColor;
+
+void main() {
+	outColor = vColor;
+}
+				`,
+
+			} );
+		
+			mesh = new Mesh( geometry, material );
+			mesh.name = 'mesh';
+			mesh.matrixAutoUpdate = false;
+			mesh.position.set( - 4, 0, 0 );
+			mesh.rotateX( - Math.PI / 2 );
+			mesh.updateMatrix();
+			mesh.updateMatrixWorld();
+			scene.add( mesh );
+
+			const mesh2 = mesh.clone();
+			mesh2.name = 'mesh2';
+			mesh2.matrixAutoUpdate = false;
+			mesh2.position.set( 4, 0, 0 );
+			mesh2.updateMatrix();
+			mesh2.updateMatrixWorld();
+			scene.add( mesh2 );
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const gui_options = {
+				'ambient.visible': true,
+				'ambient.intensity': ambientLight.intensity,
+				'ambient.color': ambientLight.color.getHex(),
+				'direction.visible': true,
+				'direction.intensity': directionLight.intensity,
+				'direction.color': directionLight.color.getHex(),
+				'material.shininess': 30,
+				'material.specular': mesh.material.specular.getHex(),
+				'material.emissive': mesh.material.emissive.getHex(),
+				'material.dithering': mesh.material.dithering,
+				'material.flatShading': mesh.material.flatShading,
+			};
+			gui.add( gui_options, 'ambient.visible' ).onChange( ( value ) => {
+
+				ambientLight.visible = value;
+				isDirty = true;
+		
+			} );
+			gui.add( gui_options, 'ambient.intensity', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
+
+				ambientLight.intensity = value;
+				isDirty = true;
+
+			} );
+			gui.addColor( gui_options, 'ambient.color' ).onChange( ( value ) => {
+
+				ambientLight.color.set( value );
+				isDirty = true;
+
+			} );
+			gui.add( gui_options, 'direction.visible' ).onChange( ( value ) => {
+
+				directionLight.visible = value;
+				isDirty = true;
+		
+			} );
+			gui.add( gui_options, 'direction.intensity', 0, 2 ).step( 0.1 ).onChange( ( value ) => {
+
+				directionLight.intensity = value;
+				isDirty = true;
+
+			} );
+			gui.addColor( gui_options, 'direction.color' ).onChange( ( value ) => {
+
+				directionLight.color.set( value );
+				isDirty = true;
+
+			} );
+			gui.add( gui_options, 'material.shininess', 0, 256 ).step( 10 ).onChange( ( value ) => {
+
+				mesh.material.shininess = value;
+				isDirty = true;
+
+			} );
+			gui.addColor( gui_options, 'material.specular' ).onChange( ( value ) => {
+
+				mesh.material.specular.set( value );
+				isDirty = true;
+
+			} );
+			gui.addColor( gui_options, 'material.emissive' ).onChange( ( value ) => {
+
+				mesh.material.emissive.set( value );
+				isDirty = true;
+
+			} );
+			gui.add( gui_options, 'material.dithering' ).onChange( ( value ) => {
+
+				mesh.material.dithering = value;
+				mesh.material.needsUpdate = true;
+				isDirty = true;
+
+			} );
+			gui.add( gui_options, 'material.flatShading' ).onChange( ( value ) => {
+
+				mesh.material.flatShading = value;
+				mesh.material.needsUpdate = true;
+				isDirty = true;
+
+			} );
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			// camera.left = - w / 2;
+			// camera.right = w / 2;
+			// camera.top = h / 2;
+			// camera.bottom = - h / 2;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+		
+		}
+
+		function render() {
+		
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+		
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>

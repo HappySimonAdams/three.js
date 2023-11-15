@@ -22,7 +22,8 @@
 			Scene,
 			WebGLRenderer,
 			AxesHelper,
-			GridHelper
+			GridHelper,
+			AdditiveBlending,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -61,7 +62,7 @@
 			// scene.add( axes );
 
 			// NOTE: 抗锯齿(MSAA)会造成线条抖动，关闭抗锯齿可减小抖动，但不能完全避免抖动
-			renderer = new WebGLRenderer( /*  { antialias: true }  */ );
+			renderer = new WebGLRenderer( /* { antialias: true } */ );
 			renderer.setClearColor( 0x333333 );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( width, height );
@@ -85,6 +86,7 @@
 
 			const grid = new GridHelper( 2000, 100 );
 			grid.matrixAutoUpdate = false;
+			// grid.material.blending = AdditiveBlending;
 			scene.add( grid );
 
 		}
