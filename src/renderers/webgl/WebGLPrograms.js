@@ -12,7 +12,8 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 	const programs = [];
 
 	const IS_WEBGL2 = capabilities.isWebGL2;
-	const logarithmicDepthBuffer = capabilities.logarithmicDepthBuffer;
+	// FIXME: 可以通过 renderer.capabilities.logarithmicDepthBuffer 动态设置；或者通过customProgramCacheKey设置
+	// const logarithmicDepthBuffer = capabilities.logarithmicDepthBuffer;
 	const SUPPORTS_VERTEX_TEXTURES = capabilities.vertexTextures;
 
 	let precision = capabilities.precision;
@@ -302,7 +303,9 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 			flatShading: material.flatShading === true,
 
 			sizeAttenuation: material.sizeAttenuation === true,
-			logarithmicDepthBuffer: logarithmicDepthBuffer,
+			// FIXME: 可以通过 renderer.capabilities.logarithmicDepthBuffer 动态设置；或者通过customProgramCacheKey设置
+			// logarithmicDepthBuffer: logarithmicDepthBuffer,
+			logarithmicDepthBuffer: capabilities.logarithmicDepthBuffer,
 
 			skinning: object.isSkinnedMesh === true,
 
