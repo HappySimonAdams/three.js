@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>customBasicMaterial sample</title>
+	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../src/Three.js",
+				"three/addons/": "../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			OrthographicCamera,
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			PlaneGeometry,
+			SphereGeometry,
+			BoxGeometry,
+			MeshBasicMaterial,
+			RawShaderMaterial,
+			Mesh,
+			TextureLoader,
+			SRGBColorSpace,
+			RepeatWrapping,
+			GLSL3,
+			Matrix3,
+			Color,
+			Fog,
+			CustomBlending,
+			AdditiveBlending,
+			BackSide,
+			UniformsUtils,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+
+		let renderer, scene, camera, controls, stats;
+		let material, material2;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		const SCALAR = 10000;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 1, 100 * SCALAR );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 1, 10 * SCALAR );
+			camera.position.set( 0, 3 * SCALAR, 6 * SCALAR );
+
+			scene = new Scene();
+
+			scene.fog = new Fog( 0x999999, 6 * SCALAR, 15 * SCALAR );
+
+			const axes = new AxesHelper( 10 * SCALAR );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+			// controls.update();
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			// const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
+			const geometry = new BoxGeometry( 2, 2, 2 );
+
+			const texture = new TextureLoader().load( '../examples/textures/crate.gif', () => isDirty = true );
+			texture.colorSpace = SRGBColorSpace;
+			texture.wrapS = RepeatWrapping;
+			texture.wrapT = RepeatWrapping;
+			texture.repeat.set( 4, 4 );
+
+			material = new MeshBasicMaterial( { color: 0xcccccc } );
+			material.fog = false;
+			material.transparent = true;
+			material.opacity = 0.4;
+			// material.premultipliedAlpha = true;
+			// material.blending = AdditiveBlending;
+			// material.map = texture;
+
+			const mesh = new Mesh( geometry, material );
+			mesh.name = 'mesh';
+			mesh.matrixAutoUpdate = false;
+			mesh.scale.setScalar( SCALAR );
+			mesh.rotateX( - Math.PI / 2 );
+			mesh.updateMatrix();
+			mesh.updateMatrixWorld();
+			scene.add( mesh );
+
+			// debug 对数深度
+
+			material2 = new MeshBasicMaterial( { color: 0x006666 } );
+			material2.fog = false;
+			material2.transparent = true;
+			material2.opacity = 0.3;
+			// material2.premultipliedAlpha = true;
+			// material2.blending = AdditiveBlending;
+
+			const mesh2 = new Mesh( geometry, material2 );
+			mesh2.name = 'mesh2';
+			mesh2.matrixAutoUpdate = false;
+			// NOTE: x, y 方向移动 1，用于对数深度调试
+			mesh2.position.set( 1, 1, - 1 * SCALAR );
+			mesh2.scale.setScalar( SCALAR );
+			mesh2.rotateX( - Math.PI / 2 );
+			mesh2.updateMatrix();
+			mesh2.updateMatrixWorld();
+			scene.add( mesh2 );
+
+			// const mesh3 = new Mesh( new SphereGeometry( 1 ), new MeshBasicMaterial( { color: 0x999900, side: BackSide, fog: false } ) );
+			// mesh3.name = 'mesh3';
+			// mesh3.matrixAutoUpdate = false;
+			// mesh3.scale.setScalar( 6 * SCALAR );
+			// mesh3.updateMatrix();
+			// mesh3.updateMatrixWorld();
+			// scene.add( mesh3 );
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const materialFolder = gui.addFolder( 'Material' );
+			const materialFolderOptions = {};
+			if ( material.isMeshBasicMaterial ) {
+
+				materialFolderOptions[ 'logarithmicDepthBuffer' ] = renderer.capabilities.logarithmicDepthBuffer;
+				materialFolder.add( materialFolderOptions, 'logarithmicDepthBuffer' ).onChange( ( value ) => {
+
+					renderer.capabilities.logarithmicDepthBuffer = value;
+					// NOTE: 需要更新material
+					material.needsUpdate = true;
+					material2.needsUpdate = true;
+					isDirty = true;
+
+				} );
+
+			} else if ( material.isRawShaderMaterial ) {
+
+				// materialFolderOptions[ 'texture.offset' ] = material.uniforms.map.value.offset.x;
+				// materialFolderOptions[ 'defines.USE_MAP' ] = false;
+				// materialFolderOptions[ 'defines.USE_ALPHAHASH' ] = false;
+				// materialFolderOptions[ 'uniforms.ALPHA_HASH_SCALE' ] = material.uniforms.ALPHA_HASH_SCALE.value;
+				// materialFolderOptions[ 'defines.USE_FOG' ] = false;
+				// materialFolderOptions[ 'defines.USE_LOGDEPTHBUF' ] = false;
+				// materialFolderOptions[ 'defines.USE_LOGDEPTHBUF_EXT' ] = false;
+				// materialFolderOptions[ 'defines.USE_CUSTOM_DEPTH' ] = false;
+				// materialFolderOptions[ 'defines.TONE_MAPPING' ] = false;
+				// materialFolderOptions[ 'toneMappingExposure' ] = renderer.toneMappingExposure;
+				// materialFolderOptions[ 'defines.PREMULTIPLIED_ALPHA' ] = false;
+
+				// materialFolder.add( materialFolderOptions, 'texture.offset', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
+
+				// 	material.uniforms.map.value.offset.set( value, 0 );
+				// 	material.uniforms.map.value.updateMatrix();
+				// 	isDirty = true;
+
+				// } );
+				// materialFolder.add( materialFolderOptions, 'uniforms.shininess', 0, 256 ).step( 10 ).onChange( ( value ) => {
+
+				// 	material.uniforms.shininess.value = value;
+				// 	isDirty = true;
+
+				// } );
+				// materialFolder.add( materialFolderOptions, 'uniforms.G_BlinnPhong', 0, 2 ).step( 0.1 ).onChange( ( value ) => {
+
+				// 	material.uniforms.G_BlinnPhong.value = value;
+				// 	isDirty = true;
+
+				// } );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_MAP' ).onChange( ( value ) => toggleDefines( 'USE_MAP', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_ALPHAHASH' ).onChange( ( value ) => toggleDefines( 'USE_ALPHAHASH', value ) );
+				// materialFolder.add( materialFolderOptions, 'uniforms.ALPHA_HASH_SCALE', 0, 1 ).step( 0.01 ).onChange( ( value ) => {
+
+				// 	material.uniforms.ALPHA_HASH_SCALE.value = value;
+				// 	isDirty = true;
+
+				// } );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_FOG' ).onChange( ( value ) => toggleDefines( 'USE_FOG', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.FLAT_SHADED' ).onChange( ( value ) => toggleDefines( 'FLAT_SHADED', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_LOGDEPTHBUF' ).onChange( ( value ) => toggleDefines( 'USE_LOGDEPTHBUF', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_LOGDEPTHBUF_EXT' ).onChange( ( value ) => toggleDefines( 'USE_LOGDEPTHBUF_EXT', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.USE_CUSTOM_DEPTH' ).onChange( ( value ) => toggleDefines( 'USE_CUSTOM_DEPTH', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.DITHERING' ).onChange( ( value ) => toggleDefines( 'DITHERING', value ) );
+				// materialFolder.add( materialFolderOptions, 'defines.TONE_MAPPING' ).onChange( ( value ) => toggleDefines( 'TONE_MAPPING', value ) );
+				// materialFolder.add( materialFolderOptions, 'toneMappingExposure', 0, 10 ).step( 0.1 ).onChange( ( value ) => {
+
+				// 	renderer.toneMappingExposure = value;
+				// 	isDirty = true;
+
+				// } );
+				// materialFolder.add( materialFolderOptions, 'defines.PREMULTIPLIED_ALPHA' ).onChange( ( value ) => toggleDefines( 'PREMULTIPLIED_ALPHA', value ) );
+
+			}
+
+			function toggleDefines( name, value ) {
+
+				value ? ( material.defines[ name ] = '' ) : delete material.defines[ name ];
+				material.needsUpdate = true;
+				isDirty = true;
+
+			}
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			// camera.left = - w / 2;
+			// camera.right = w / 2;
+			// camera.top = h / 2;
+			// camera.bottom = - h / 2;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		function render() {
+
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>

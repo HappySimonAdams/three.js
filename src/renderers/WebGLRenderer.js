@@ -1508,7 +1508,7 @@ class WebGLRenderer {
 
 			}
 
-			// console.log( 'proprogramCacheKey: ', programCacheKey );
+			console.log( `material${material.id} programCacheKey: ${programCacheKey}` );
 			let program = programs.get( programCacheKey );
 
 			if ( program !== undefined ) {
@@ -1777,7 +1777,7 @@ class WebGLRenderer {
 
 			if ( state.useProgram( program.program ) ) {
 
-				console.log( `material${material.id} => program${program.id} gl.useProgram()` );
+				// console.log( `material${material.id} => program${program.id} gl.useProgram()` );
 				refreshProgram = true;
 				refreshMaterial = true;
 				refreshLights = true;

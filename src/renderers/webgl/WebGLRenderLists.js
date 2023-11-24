@@ -36,7 +36,6 @@ function reversePainterSortStable( a, b ) {
 
 	} else if ( a.z !== b.z ) {
 
-		console.log( '根据z值逆向排序（离相机越远z越大）' );
 		return b.z - a.z;
 
 	} else {

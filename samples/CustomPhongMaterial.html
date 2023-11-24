@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>CustomPhongMaterial sample</title>
+	<title>customPhongMaterial sample</title>
 	<link type="text/css" rel="stylesheet" href="../examples/main.css">
 </head>
 <body>
@@ -18,35 +18,59 @@
 
 	<script type="module">
 		import {
-			// OrthographicCamera,
+			OrthographicCamera,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
 			AxesHelper,
 			PlaneGeometry,
 			TorusKnotGeometry,
+			BoxGeometry,
+			MeshBasicMaterial,
 			MeshPhongMaterial,
+			ShaderMaterial,
 			RawShaderMaterial,
 			Mesh,
 			AmbientLight,
 			DirectionalLight,
+			DirectionalLightHelper,
+			PointLight,
+			PointLightHelper,
+			SpotLight,
+			SpotLightHelper,
+			HemisphereLight,
+			HemisphereLightHelper,
 			TextureLoader,
 			SRGBColorSpace,
 			RepeatWrapping,
 			GLSL3,
-			Matrix4,
+			Matrix3,
+			Color,
+			Fog,
+			CustomBlending,
+			BasicShadowMap,
+			PCFShadowMap,
+			PCFSoftShadowMap,
+			VSMShadowMap,
+			DoubleSide,
+			CameraHelper,
+			UniformsUtils,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
-		let ambientLight, directionLight, mesh;
+		let ambientLight, directionLight, pointLight, spotLight, hemiLight;
+		const meshes = [];
+		let plane;
 		let isDirty = true;
 		let lastTime = performance.now();
 
 		const width = window.innerWidth;
 		const height = window.innerHeight;
+
+		const SCALAR = 10000;
 
 		init();
 		render();
@@ -56,21 +80,23 @@
 			initViewer();
 			initObjects();
 			initGUI();
-		
+
 		}
 
 		function initViewer() {
 
-			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
-			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 1000 );
-			camera.position.set( 0, 3, 6 );
+			camera = new PerspectiveCamera( 45, width / height, 1, 100 * SCALAR );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 1, 10 * SCALAR );
+			camera.position.set( 0, 3 * SCALAR, 6 * SCALAR );
 
 			scene = new Scene();
-			scene.matrixAutoUpdate = false;
+			// scene.matrixAutoUpdate = false;
 			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			scene.matrixWorldAutoUpdate = false;
+			// scene.matrixWorldAutoUpdate = false;
 
-			const axes = new AxesHelper( 10 );
+			scene.fog = new Fog( 0x999999, 6 * SCALAR, 15 * SCALAR );
+
+			const axes = new AxesHelper( 10 * SCALAR );
 			axes.matrixAutoUpdate = false;
 			// scene.add( axes );
 
@@ -78,6 +104,8 @@
 			renderer.setClearColor( 0x333333 );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( width, height );
+			renderer.shadowMap.enabled = true;
+			// renderer.shadowMap.type = BasicShadowMap; // 默认为 PCFShadowMap
 			renderer.domElement.style.touchAction = 'none';
 			document.body.appendChild( renderer.domElement );
 
@@ -98,219 +126,2155 @@
 			ambientLight = new AmbientLight( 0x404040 );
 			scene.add( ambientLight );
 
-			directionLight = new DirectionalLight( 0xffffff, 1.5 );
+			directionLight = new DirectionalLight( 0xffffff, 3 );
 			directionLight.matrixAutoUpdate = false;
-			directionLight.position.set( 1, 1, 0 );
+			directionLight.position.set( 2 * SCALAR, 2 * SCALAR, 2 * SCALAR );
 			directionLight.updateMatrix();
 			directionLight.updateMatrixWorld();
+			directionLight.castShadow = true;
+			directionLight.shadow.camera.left = - 5 * SCALAR;
+			directionLight.shadow.camera.right = 5 * SCALAR;
+			directionLight.shadow.camera.top = 5 * SCALAR;
+			directionLight.shadow.camera.bottom = - 5 * SCALAR;
+			directionLight.shadow.camera.near = 1;
+			directionLight.shadow.camera.far = 10 * SCALAR;
+			// directionLight.shadow.mapSize.set( 1024, 1024 );
 			scene.add( directionLight );
+			// scene.add( new DirectionalLightHelper( directionLight, 0.5 * SCALAR ) );
+			// scene.add( new CameraHelper( directionLight.shadow.camera ) );
+			window.directionLight = directionLight;
 
-			// const light1 = new DirectionalLight( 0xffffff, 3 );
-			// light1.position.set( 0, 200, 0 );
-			// light1.updateMatrix();
-			// light1.updateMatrixWorld();
-			// scene.add( light1 );
+			// NOTE: 点光源会随距离呈现指数级衰减，此处提升光照强度，并设置decay为1
+			pointLight = new PointLight( 0xffffff, 10 * SCALAR, 0, 1 );
+			pointLight.matrixAutoUpdate = false;
+			pointLight.position.set( - 2 * SCALAR, 2 * SCALAR, 0 );
+			pointLight.updateMatrix();
+			pointLight.updateMatrixWorld();
+			scene.add( pointLight );
+			// scene.add( new PointLightHelper( pointLight, 0.1 * SCALAR ) );
 
-			// const light2 = new DirectionalLight( 0xffffff, 3 );
-			// light2.position.set( 100, 200, 100 );
-			// light2.updateMatrix();
-			// light2.updateMatrixWorld();
-			// scene.add( light2 );
+			// NOTE: 聚光灯会随距离呈现指数级衰减，此处提升光照强度，并设置decay为1
+			spotLight = new SpotLight( 0xffffff, 10 * SCALAR, 3 * SCALAR, Math.PI / 5, 0.6, 1 );
+			spotLight.matrixAutoUpdate = false;
+			spotLight.position.set( 0, 2 * SCALAR, 0 );
+			spotLight.updateMatrix();
+			spotLight.updateMatrixWorld();
+			scene.add( spotLight );
+			// scene.add( new SpotLightHelper( spotLight ) );
 
-			// const light3 = new DirectionalLight( 0xffffff, 3 );
-			// light3.position.set( - 100, - 200, - 100 );
-			// light3.updateMatrix();
-			// light3.updateMatrixWorld();
-			// scene.add( light3 );
+			// hemiLight相当于一种环境光
+			hemiLight = new HemisphereLight( 0xffffff, 0xffffff, 2 );
+			hemiLight.color.setHSL( 0.6, 1, 0.6 );
+			hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+			hemiLight.matrixAutoUpdate = false;
+			hemiLight.position.set( 0, 2 * SCALAR, 0 );
+			hemiLight.updateMatrix();
+			hemiLight.updateMatrixWorld();
+			hemiLight.visible = false;
+			scene.add( hemiLight );
+			// scene.add( new HemisphereLightHelper( hemiLight, 0.5 * SCALAR ) );
 
-			const geometry = new PlaneGeometry( 6, 6 );
 			// const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
+			const geometry = new BoxGeometry( 2, 2, 2 );
 
-			// const texture = new TextureLoader().load( '../examples/textures/crate.gif', () => isDirty = true );
-			// texture.colorSpace = SRGBColorSpace;
-			// texture.wrapS = RepeatWrapping;
-			// texture.wrapT = RepeatWrapping;
-			// texture.repeat.set( 4, 4 );
+			const texture = new TextureLoader().load( '../examples/textures/crate.gif', () => isDirty = true );
+			texture.colorSpace = SRGBColorSpace;
+			texture.wrapS = RepeatWrapping;
+			texture.wrapT = RepeatWrapping;
+			texture.repeat.set( 4, 4 );
 
-			const material = new RawShaderMaterial( {
-				glslVersion: GLSL3,
-				uniforms: {
-					mapTransform: { value: new Matrix4() },
-				},
-				defines: {
-		
-				},
-				vertexShader: `
+			const material = new MeshPhongMaterial( { color: 0x666666 } );
+			// material.map = texture;
+			material.transparent = true;
+			material.opacity = 0.5;
+			material.fog = false;
+
+			const uniforms = {
+				map: { value: null },
+				mapTransform: { value: new Matrix3() }, // Texture.matrix
+				alphaTest: { value: 0 },
+				diffuse: { value: new Color( 0xffffff ) },
+				emissive: { value: new Color( 0x000000 ) },
+				specular: { value: new Color( 0x111111 ) },
+				shininess: { value: 30 },
+				opacity: { value: 1 },
+				fogDensity: { value: 0.00025 },
+				fogNear: { value: 1 },
+				fogFar: { value: 2000 },
+				fogColor: { value: new Color( 0xffffff ) },
+				ambientLightColor: { value: [] },
+				lightProbe: { value: [ ] },
+				directionalLights: { value: [], properties: {
+					direction: {},
+					color: {}
+				} },
+				directionalLightShadows: { value: [], properties: {
+					shadowBias: {},
+					shadowNormalBias: {},
+					shadowRadius: {},
+					shadowMapSize: {}
+				} },
+				directionalShadowMap: { value: [] },
+				directionalShadowMatrix: { value: [] },
+				pointLights: { value: [], properties: {
+					color: {},
+					position: {},
+					decay: {},
+					distance: {}
+				} },
+				pointLightShadows: { value: [], properties: {
+					shadowBias: {},
+					shadowNormalBias: {},
+					shadowRadius: {},
+					shadowMapSize: {},
+					shadowCameraNear: {},
+					shadowCameraFar: {}
+				} },
+				pointShadowMap: { value: [] },
+				pointShadowMatrix: { value: [] },
+				spotLights: { value: [], properties: {
+					color: {},
+					position: {},
+					direction: {},
+					distance: {},
+					coneCos: {},
+					penumbraCos: {},
+					decay: {}
+				} },
+				spotLightShadows: { value: [], properties: {
+					shadowBias: {},
+					shadowNormalBias: {},
+					shadowRadius: {},
+					shadowMapSize: {}
+				} },
+				spotLightMap: { value: [] },
+				spotShadowMap: { value: [] },
+				spotLightMatrix: { value: [] },
+				hemisphereLights: { value: [], properties: {
+					direction: {},
+					skyColor: {},
+					groundColor: {}
+				} },
+				// NOTE: Only MeshStandardMaterial and MeshPhysicalMaterial are supported.
+				// 必须指定，否则会报错
+				rectAreaLights: { value: [], properties: {
+					color: {},
+					position: {},
+					width: {},
+					height: {}
+				} },
+				ltc_1: { value: null },
+				ltc_2: { value: null },
+				cameraNear: { value: camera.near },
+				cameraFar: { value: camera.far },
+				G_BlinnPhong: { value: 0.25 },
+				ALPHA_HASH_SCALE: { value: 0.05 },
+			};
+			const vertexShader = `
+// 兼容webgl1的写法
+#define attribute in
+#define varying out
+#define texture2D texture
+
 precision highp float;
 precision highp int;
 
+// NOTE: 内部设置, 内部上传 (p_uniforms)
+uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+uniform mat3 normalMatrix; // NOTE: 该矩阵是视空间下的法线矩阵
+uniform vec3 cameraPosition;
+uniform bool isOrthographic;
 
-in vec3 position;
-in vec3 normal;
-in vec2 uv;
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
 #if defined( USE_COLOR_ALPHA )
-	in vec4 color;
+	attribute vec4 color;
 #elif defined( USE_COLOR )
-	in vec3 color;
+	attribute vec3 color;
 #endif
 #ifdef USE_INSTANCING
-	in mat4 instanceMatrix;
+	attribute mat4 instanceMatrix;
 #endif
 #ifdef USE_INSTANCING_COLOR
-	in vec3 instanceColor;
+	attribute vec3 instanceColor;
+#endif
+#ifdef USE_TANGENT
+	attribute vec4 tangent;
 #endif
 
-out vec3 vNormal;
-out vec3 vViewPosition;
-#if defined( USE_COLOR_ALPHA )
-	out vec4 vColor;
-#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
-	out vec3 vColor;
+varying vec3 vViewPosition;
+
+/* <common> */
+
+#define EPSILON 1e-6
+
+// NOTE: USE_ALPHAHASH => Material.alphaHash
+#ifdef USE_ALPHAHASH
+	varying vec3 vPosition;
 #endif
+
+bool isPerspectiveMatrix( mat4 m ) {
+	return m[ 2 ][ 3 ] == - 1.0;
+}
+
+/* <uv_pars_vertex> */
+
+// NOTE: USE_UV => 外部拓展中用到
+// NOTE: USE_ANISOTROPY => MeshPhysicalMaterial.anisotropy
+#if defined( USE_UV ) || defined( USE_ANISOTROPY )
+	varying vec2 vUv;
+#endif
+// NOTE: USE_MAP => MeshPhongMaterial.map
 #ifdef USE_MAP
-	uniform mat3 mapTransform;
-	out vec2 vMapUv;
+	// NOTE: 外部设置, 外部上传
+	uniform mat3 mapTransform; // MeshPhongMaterial.map.matrix
+	varying vec2 vMapUv;
 #endif
-#ifdef USE_FOG
-	out float vFogDepth;
-#endif
-#ifndef FLAT_SHADED
-	out vec3 vNormal;
 
-	// #ifdef USE_TANGENT
-	// 	varying vec3 vTangent;
-	// 	varying vec3 vBitangent;
+/* <color_pars_vertex> */
+
+#if defined( USE_COLOR_ALPHA )
+	varying vec4 vColor;
+#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+	varying vec3 vColor;
+#endif
+
+/* <fog_pars_vertex> */
+
+// NOTE: USE_FOG => MeshPhongMaterial.fog && Scene.fog
+#ifdef USE_FOG
+	varying float vFogDepth;
+#endif
+
+/* <normal_pars_vertex> */
+
+// NOTE: FLAT_SHADED => MeshPhongMaterial.flatShading
+#ifndef FLAT_SHADED
+	varying vec3 vNormal;
+	// NOTE: USE_TANGENT => BufferGeometry.attribute.tangent && (MeshPhongMaterial.normalMap || MeshPhysicalMaterial.anisotropy > 0)
+	#ifdef USE_TANGENT
+		varying vec3 vTangent;
+		varying vec3 vBitangent;
+	#endif
+#endif
+
+/* <shadowmap_pars_vertex> */
+
+// NOTE: NUM_SPOT_LIGHT_COORDS = 投射阴影的聚光灯数量(light.shadow.map) + 定义了调制map的聚光灯数量(light.map) - 既投射了阴影也定义了调制map的聚光灯数量
+#if NUM_SPOT_LIGHT_COORDS > 0
+	// NOTE: 外部设置, 外部上传
+	uniform mat4 spotLightMatrix[ NUM_SPOT_LIGHT_COORDS ];
+	varying vec4 vSpotLightCoord[ NUM_SPOT_LIGHT_COORDS ]; // 光空间下的坐标值(z为深度, 用于与深度缓存作比较)
+#endif
+
+// NOTE: USE_SHADOWMAP => WebGLRenderer.shadowMap.enabled && (投射阴影的灯光数量 > 0)
+#ifdef USE_SHADOWMAP
+	#if NUM_DIR_LIGHT_SHADOWS > 0
+		uniform mat4 directionalShadowMatrix[ NUM_DIR_LIGHT_SHADOWS ];
+		varying vec4 vDirectionalShadowCoord[ NUM_DIR_LIGHT_SHADOWS ]; // 光空间下的坐标值(z为深度, 用于与深度缓存作比较)
+		struct DirectionalLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+		};
+		uniform DirectionalLightShadow directionalLightShadows[ NUM_DIR_LIGHT_SHADOWS ];
+	#endif
+
+	#if NUM_SPOT_LIGHT_SHADOWS > 0
+		struct SpotLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+		};
+		uniform SpotLightShadow spotLightShadows[ NUM_SPOT_LIGHT_SHADOWS ];
+	#endif
+
+	#if NUM_POINT_LIGHT_SHADOWS > 0
+		uniform mat4 pointShadowMatrix[ NUM_POINT_LIGHT_SHADOWS ];
+		varying vec4 vPointShadowCoord[ NUM_POINT_LIGHT_SHADOWS ];
+		struct PointLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+			float shadowCameraNear;
+			float shadowCameraFar;
+		};
+		uniform PointLightShadow pointLightShadows[ NUM_POINT_LIGHT_SHADOWS ];
+	#endif
+
+	// #if NUM_RECT_AREA_LIGHTS > 0
+	// 	// TODO (abelnation): uniforms for area light shadows
 	// #endif
 #endif
 
+/* <logdepthbuf_pars_vertex> */
+
+// NOTE: USE_LOGDEPTHBUF => WebGLRenderer({ logarithmicDepthBuffer: true })
+#ifdef USE_LOGDEPTHBUF
+    // NOTE: USE_LOGDEPTHBUF_EXT => WebGL2 || support EXT_frag_depth extension
+	#ifdef USE_LOGDEPTHBUF_EXT
+		varying float vFragDepth;
+		varying float vIsPerspective;
+	#else
+		// NOTE: 内部设置, 内部上传 (p_uniforms)
+		uniform float logDepthBufFC;
+	#endif
+#endif
+
+// NOTE: 自定义深度
+#ifdef USE_CUSTOM_DEPTH
+	uniform float cameraNear;
+	uniform float cameraFar;
+	varying float vFragDepth;
+	varying float vIsPerspective;
+#endif
+
+/* <clipping_planes_pars_vertex> */
+
+#if NUM_CLIPPING_PLANES > 0
+	varying vec3 vClipPosition;
+#endif
+
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
+
 void main() {
+	/* <uv_vertex> */
+
+	#if defined( USE_UV ) || defined( USE_ANISOTROPY )
+		vUv = uv;
+	#endif
 	#ifdef USE_MAP
 		vMapUv = ( mapTransform * vec3( uv, 1 ) ).xy;
 	#endif
-	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+	/* <color_vertex> */
+
+	#if defined( USE_COLOR_ALPHA )
+		vColor = vec4( 1.0 );
+	#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+		vColor = vec3( 1.0 );
+	#endif
+	#ifdef USE_COLOR
+		vColor *= color;
+	#endif
+	#ifdef USE_INSTANCING_COLOR
+		vColor.xyz *= instanceColor.xyz;
+	#endif
+
+	/* <beginnormal_vertex> */
+
+	vec3 objectNormal = vec3( normal );
+	#ifdef USE_TANGENT
+		vec3 objectTangent = vec3( tangent.xyz );
+	#endif
+
+	/* <defaultnormal_vertex> */
+
+	vec3 transformedNormal = objectNormal;
+	#ifdef USE_INSTANCING
+		// 在实例化渲染中，由于实例矩阵不支持法线矩阵的切变变换，因此通过将法线向量除以列向量长度的平方来近似进行法线变换，然后再乘以实例矩阵进行最终的变换操作。这样可以保持法线向量的正确方向，并考虑到实例的缩放因素
+		mat3 m = mat3( instanceMatrix );
+		transformedNormal /= vec3( dot( m[ 0 ], m[ 0 ] ), dot( m[ 1 ], m[ 1 ] ), dot( m[ 2 ], m[ 2 ] ) );
+		transformedNormal = m * transformedNormal;
+	#endif
+	// NOTE: 该法线是视空间下的法线
+	transformedNormal = normalMatrix * transformedNormal;
+	// NOTE: FLIP_SIDED => Material.side
+	#ifdef FLIP_SIDED
+		transformedNormal = - transformedNormal;
+	#endif
+	#ifdef USE_TANGENT
+		vec3 transformedTangent = ( modelViewMatrix * vec4( objectTangent, 0.0 ) ).xyz;
+		#ifdef FLIP_SIDED
+			transformedTangent = - transformedTangent;
+		#endif
+	#endif
+
+	/* <normal_vertex> */
+
+	#ifndef FLAT_SHADED
+		vNormal = normalize( transformedNormal );
+		#ifdef USE_TANGENT
+			vTangent = normalize( transformedTangent );
+			vBitangent = normalize( cross( vNormal, vTangent ) * tangent.w );
+		#endif
+	#endif
+
+	/* <begin_vertex> */
+
+	vec3 transformed = vec3( position );
+	#ifdef USE_ALPHAHASH
+		vPosition = vec3( position );
+	#endif
+
+	/* <project_vertex> */
+
+	vec4 mvPosition = vec4( transformed, 1.0 );
+	#ifdef USE_INSTANCING
+		mvPosition = instanceMatrix * mvPosition;
+	#endif
+	mvPosition = modelViewMatrix * mvPosition;
+	gl_Position = projectionMatrix * mvPosition;
+
+	/* <logdepthbuf_vertex> */
+
+	#ifdef USE_LOGDEPTHBUF
+		#ifdef USE_LOGDEPTHBUF_EXT
+			vFragDepth = gl_Position.w + 1.0;
+			vIsPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
+		#else
+			if ( isPerspectiveMatrix( projectionMatrix ) ) {
+				gl_Position.z = log2( max( EPSILON, gl_Position.w + 1.0 ) ) * logDepthBufFC - 1.0;
+				gl_Position.z *= gl_Position.w;
+			}
+		#endif
+	#endif
+
+	// NOTE: 自定义深度
+	#ifdef USE_CUSTOM_DEPTH
+		// 线性深度
+		// vFragDepth = ( gl_Position.z - cameraNear) / ( cameraFar - cameraNear );
+
+		// 线性深度 (效果并不好)
+		vFragDepth = gl_Position.z / gl_Position.w;
+
+		// 非线性深度 (效果并不好)
+		// vFragDepth = ( 1.0 / gl_Position.z - 1.0 / cameraNear ) / ( 1.0 / cameraFar - 1.0 / cameraNear );
+
+		// 对数深度 (效果不错, 但没有threejs实现的平滑)
+		vFragDepth = log2( gl_Position.z + 1.0 ) / log2( cameraFar + 1.0 ); // 可以使用 gl_Position.w 代替 gl_Position.z
+
+		vIsPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
+	#endif
+
+	/* <clipping_planes_vertex> */
+
+	#if NUM_CLIPPING_PLANES > 0
+		vClipPosition = - mvPosition.xyz;
+	#endif
+
+	/*  */
+
+	// NOTE: viewDirection = viewPosition - position (顶点位置指向相机位置)
+	vViewPosition = - mvPosition.xyz;
+
+	/* <worldpos_vertex> */
+
+	#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP ) || defined ( USE_TRANSMISSION ) || NUM_SPOT_LIGHT_COORDS > 0
+		vec4 worldPosition = vec4( transformed, 1.0 );
+		#ifdef USE_INSTANCING
+			worldPosition = instanceMatrix * worldPosition;
+		#endif
+		worldPosition = modelMatrix * worldPosition;
+	#endif
+
+	/* <shadowmap_vertex> */
+
+	#if ( defined( USE_SHADOWMAP ) && ( NUM_DIR_LIGHT_SHADOWS > 0 || NUM_POINT_LIGHT_SHADOWS > 0 ) ) || ( NUM_SPOT_LIGHT_COORDS > 0 )
+		// Offsetting the position used for querying occlusion along the world normal can be used to reduce shadow acne.
+		// NOTE: 将法线从视空间转换到模型空间
+		vec3 shadowWorldNormal = inverseTransformDirection( transformedNormal, viewMatrix );
+		vec4 shadowWorldPosition;
+	#endif
+
+	#if defined( USE_SHADOWMAP )
+		#if NUM_DIR_LIGHT_SHADOWS > 0
+			#pragma unroll_loop_start
+			for ( int i = 0; i < NUM_DIR_LIGHT_SHADOWS; i ++ ) {
+				shadowWorldPosition = worldPosition + vec4( shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias, 0 );
+				vDirectionalShadowCoord[ i ] = directionalShadowMatrix[ i ] * shadowWorldPosition;
+			}
+			#pragma unroll_loop_end
+		#endif
+
+		#if NUM_POINT_LIGHT_SHADOWS > 0
+			#pragma unroll_loop_start
+			for ( int i = 0; i < NUM_POINT_LIGHT_SHADOWS; i ++ ) {
+				shadowWorldPosition = worldPosition + vec4( shadowWorldNormal * pointLightShadows[ i ].shadowNormalBias, 0 );
+				vPointShadowCoord[ i ] = pointShadowMatrix[ i ] * shadowWorldPosition;
+			}
+			#pragma unroll_loop_end
+		#endif
+
+		// #if NUM_RECT_AREA_LIGHTS > 0
+		// 	// TODO (abelnation): update vAreaShadowCoord with area light info
+		// #endif
+	#endif
+
+	// spot lights can be evaluated without active shadow mapping (when SpotLight.map is used)
+	#if NUM_SPOT_LIGHT_COORDS > 0
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_SPOT_LIGHT_COORDS; i ++ ) {
+			shadowWorldPosition = worldPosition;
+			#if ( defined( USE_SHADOWMAP ) && UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS )
+				shadowWorldPosition.xyz += shadowWorldNormal * spotLightShadows[ i ].shadowNormalBias;
+			#endif
+			vSpotLightCoord[ i ] = spotLightMatrix[ i ] * shadowWorldPosition;
+		}
+		#pragma unroll_loop_end
+	#endif
+
+	/* <fog_vertex> */
+
+	#ifdef USE_FOG
+		// NOTE: 使用深度代替距离计算雾化因子会有一些问题。See: https://webglfundamentals.org/webgl/lessons/webgl-fog.html
+		// vFogDepth = - mvPosition.z;
+		vFogDepth = length( -mvPosition.xyz );
+	#endif
 }
-				`,
-				fragmentShader: `
+			`;
+			const fragmentShader = `
+#define varying in
+#define texture2D texture
+layout(location = 0) out highp vec4 fragColor;
+#define gl_FragColor fragColor
+#define gl_FragDepthEXT gl_FragDepth
+
 precision highp float;
 precision highp int;
 
-in vec4 vColor;
+// NOTE: 内部设置, 内部上传 (p_uniforms)
+uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;
+uniform bool isOrthographic;
 
-out vec4 outColor;
+// NOTE: 外部设置, 外部上传
+uniform vec3 diffuse; // MeshPhongMateria.color
+uniform vec3 emissive; // MeshPhongMateria.emissive
+uniform vec3 specular; // MeshPhongMateria.specular
+uniform float shininess; // MeshPhongMateria.shininess
+uniform float opacity; // Materia.opacity
+
+/* <common> */
+
+#define PI 3.141592653589793
+#define PI2 6.283185307179586
+#define PI_HALF 1.5707963267948966
+#define RECIPROCAL_PI 0.3183098861837907
+#define RECIPROCAL_PI2 0.15915494309189535
+#define EPSILON 1e-6
+
+#ifndef saturate
+	#define saturate( a ) clamp( a, 0.0, 1.0 )
+#endif
+
+float pow2( const in float x ) { return x*x; }
+vec3 pow2( const in vec3 x ) { return x*x; }
+float pow3( const in float x ) { return x*x*x; }
+float pow4( const in float x ) { float x2 = x*x; return x2*x2; }
+float max3( const in vec3 v ) { return max( max( v.x, v.y ), v.z ); }
+float average( const in vec3 v ) { return dot( v, vec3( 0.3333333 ) ); }
+
+// expects values in the range of [0,1]x[0,1], returns values in the [0,1] range.
+// do not collapse into a single function per: http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
+highp float rand( const in vec2 uv ) {
+	const highp float a = 12.9898, b = 78.233, c = 43758.5453;
+	highp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );
+	return fract( sin( sn ) * c );
+}
+
+// 入射光
+struct IncidentLight {
+	vec3 color;
+	vec3 direction; // 顶点位置指向灯光位置
+	bool visible;
+};
+// 反射光
+struct ReflectedLight {
+	vec3 directDiffuse; // 直接反射
+	vec3 directSpecular;
+	vec3 indirectDiffuse; // 间接反射
+	vec3 indirectSpecular;
+};
+struct GeometricContext {
+	vec3 position;
+	vec3 normal;
+	vec3 viewDir; // 顶点位置指向相机位置
+#ifdef USE_CLEARCOAT
+	vec3 clearcoatNormal;
+#endif
+};
+
+#ifdef USE_ALPHAHASH
+	varying vec3 vPosition;
+#endif
+
+// NOTE: 矩阵作用于向量, 表示将向量转换到新的坐标空间
+vec3 transformDirection( in vec3 dir, in mat4 matrix ) {
+	return normalize( ( matrix * vec4( dir, 0.0 ) ).xyz );
+}
+
+// NOTE: 向量作用于矩阵, 表示将向量逆变换到新的坐标空间
+vec3 inverseTransformDirection( in vec3 dir, in mat4 matrix ) {
+	// dir can be either a direction vector or a normal vector
+	// upper-left 3x3 of matrix is assumed to be orthogonal
+	return normalize( ( vec4( dir, 0.0 ) * matrix ).xyz );
+}
+
+vec3 BRDF_Lambert( const in vec3 diffuseColor ) {
+	return RECIPROCAL_PI * diffuseColor;
+}
+
+vec3 F_Schlick( const in vec3 f0, const in float f90, const in float dotVH ) {
+	// Original approximation by Christophe Schlick '94
+	// float fresnel = pow( 1.0 - dotVH, 5.0 );
+
+	// Optimized variant (presented by Epic at SIGGRAPH '13)
+	// https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
+	float fresnel = exp2( ( - 5.55473 * dotVH - 6.98316 ) * dotVH );
+
+	// return f0 * ( 1.0 - fresnel ) + ( f90 * fresnel );
+	return f0 + ( f90 - f0 ) * fresnel;
+}
+
+float F_Schlick( const in float f0, const in float f90, const in float dotVH ) {
+	float fresnel = exp2( ( - 5.55473 * dotVH - 6.98316 ) * dotVH );
+	return f0 * ( 1.0 - fresnel ) + ( f90 * fresnel );
+}
+
+/* <packing> */
+
+const float PackUpscale = 256. / 255.; // fraction -> 0..1 (including 1)
+const float UnpackDownscale = 255. / 256.; // 0..1 -> fraction (excluding 1)
+
+const vec3 PackFactors = vec3( 256. * 256. * 256., 256. * 256., 256. );
+const vec4 UnpackFactors = UnpackDownscale / vec4( PackFactors, 1. );
+
+float unpackRGBAToDepth( const in vec4 v ) {
+	return dot( v, UnpackFactors );
+}
+
+vec2 unpackRGBATo2Half( vec4 v ) {
+	return vec2( v.x + ( v.y / 255.0 ), v.z + ( v.w / 255.0 ) );
+}
+
+/* <dithering_pars_fragment> */
+
+// NOTE: DITHERING => Material.dithering
+#ifdef DITHERING
+	// based on https://www.shadertoy.com/view/MslGR8
+
+	vec3 dithering( vec3 color ) {
+		// Calculate grid position
+		float grid_position = rand( gl_FragCoord.xy );
+
+		// Shift the individual colors differently, thus making it even harder to see the dithering pattern
+		vec3 dither_shift_RGB = vec3( 0.25 / 255.0, -0.25 / 255.0, 0.25 / 255.0 );
+
+		// modify shift according to grid position.
+		dither_shift_RGB = mix( 2.0 * dither_shift_RGB, -2.0 * dither_shift_RGB, grid_position );
+
+		// shift the color by dither_shift
+		return color + dither_shift_RGB;
+	}
+#endif
+
+/* <color_pars_fragment> */
+
+#if defined( USE_COLOR_ALPHA )
+	varying vec4 vColor;
+#elif defined( USE_COLOR )
+	varying vec3 vColor;
+#endif
+
+/* <uv_pars_fragment> */
+
+#if defined( USE_UV ) || defined( USE_ANISOTROPY )
+	varying vec2 vUv;
+#endif
+#ifdef USE_MAP
+	varying vec2 vMapUv;
+#endif
+
+/* <map_pars_fragment> */
+
+#ifdef USE_MAP
+	// NOTE: 外部设置, 外部上传
+	uniform sampler2D map;
+#endif
+
+/* <alphatest_pars_fragment> */
+
+// NOTE: USE_ALPHATEST => material.alphaTest > 0
+#ifdef USE_ALPHATEST
+	// NOTE: 外部设置, 外部上传
+	uniform float alphaTest;
+#endif
+
+/* <alphahash_pars_fragment> */
+
+#ifdef USE_ALPHAHASH
+	// See: https://casual-effects.com/research/Wyman2017Hashed/index.html
+	// https://casual-effects.com/research/Wyman2017Hashed/Wyman2017Hashed.pdf
+
+	// Derived from trials only, and may be changed.
+	// const float ALPHA_HASH_SCALE = 0.05;
+	// NOTE: 自定义
+	uniform float ALPHA_HASH_SCALE;
+
+	float hash2D( vec2 value ) {
+		return fract( 1.0e4 * sin( 17.0 * value.x + 0.1 * value.y ) * ( 0.1 + abs( sin( 13.0 * value.y + value.x ) ) ) );
+	}
+
+	float hash3D( vec3 value ) {
+		return hash2D( vec2( hash2D( value.xy ), value.z ) );
+	}
+
+	float getAlphaHashThreshold( vec3 position ) {
+		// Find the discretized derivatives of our coordinates
+		float maxDeriv = max(
+			length( dFdx( position.xyz ) ),
+			length( dFdy( position.xyz ) )
+		);
+		float pixScale = 1.0 / ( ALPHA_HASH_SCALE * maxDeriv );
+
+		// Find two nearest log-discretized noise scales
+		vec2 pixScales = vec2(
+			exp2( floor( log2( pixScale ) ) ),
+			exp2( ceil( log2( pixScale ) ) )
+		);
+
+		// Compute alpha thresholds at our two noise scales
+		vec2 alpha = vec2(
+			hash3D( floor( pixScales.x * position.xyz ) ),
+			hash3D( floor( pixScales.y * position.xyz ) )
+		);
+
+		// Factor to interpolate lerp with
+		float lerpFactor = fract( log2( pixScale ) );
+
+		// Interpolate alpha threshold from noise at two scales
+		float x = ( 1.0 - lerpFactor ) * alpha.x + lerpFactor * alpha.y;
+
+		// Pass into CDF to compute uniformly distrib threshold
+		float a = min( lerpFactor, 1.0 - lerpFactor );
+		vec3 cases = vec3(
+			x * x / ( 2.0 * a * ( 1.0 - a ) ),
+			( x - 0.5 * a ) / ( 1.0 - a ),
+			1.0 - ( ( 1.0 - x ) * ( 1.0 - x ) / ( 2.0 * a * ( 1.0 - a ) ) )
+		);
+
+		// Find our final, uniformly distributed alpha threshold (ατ)
+		float threshold = ( x < ( 1.0 - a ) )
+			? ( ( x < a ) ? cases.x : cases.y )
+			: cases.z;
+
+		// Avoids ατ == 0. Could also do ατ =1-ατ
+		return clamp( threshold , 1.0e-6, 1.0 );
+	}
+#endif
+
+/* <fog_pars_fragment> */
+
+#ifdef USE_FOG
+	varying float vFogDepth;
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform vec3 fogColor;
+	// NOTE: FOG_EXP2 => MeshPhongMaterial.fog && Scene.fog && Scene.fog.isFogExp2
+	#ifdef FOG_EXP2
+		uniform float fogDensity;
+	#else
+		uniform float fogNear;
+		uniform float fogFar;
+	#endif
+#endif
+
+/* <bsdfs> */
+
+// NOTE: 自定义
+uniform float G_BlinnPhong;
+
+float G_BlinnPhong_Implicit( /* const in float dotNL, const in float dotNV */ ) {
+	// geometry term is (n dot l)(n dot v) / 4(n dot l)(n dot v)
+	return 0.25;
+}
+
+float D_BlinnPhong( const in float shininess, const in float dotNH ) {
+	return RECIPROCAL_PI * ( shininess * 0.5 + 1.0 ) * pow( dotNH, shininess );
+}
+
+vec3 BRDF_BlinnPhong( const in vec3 lightDir, const in vec3 viewDir, const in vec3 normal, const in vec3 specularColor, const in float shininess ) {
+	vec3 halfDir = normalize( lightDir + viewDir );
+
+	float dotNH = saturate( dot( normal, halfDir ) );
+	float dotVH = saturate( dot( viewDir, halfDir ) );
+
+	vec3 F = F_Schlick( specularColor, 1.0, dotVH );
+	// NOTE: 自定义
+	// float G = G_BlinnPhong_Implicit( /* dotNL, dotNV */ );
+	float G = G_BlinnPhong;
+	float D = D_BlinnPhong( shininess, dotNH );
+
+	return F * ( G * D );
+}
+
+/* <lights_pars_begin> */
+
+// NOTE: 内部设置, 内部上传 (p_uniforms)
+uniform bool receiveShadow; // Object3D.receiveShadow
+// NOTE: 外部设置, 内部上传 (m_uniforms)
+uniform vec3 ambientLightColor;
+uniform vec3 lightProbe[ 9 ];
+
+// get the irradiance (radiance convolved with cosine lobe) at the point 'normal' on the unit sphere
+// source: https://graphics.stanford.edu/papers/envmap/envmap.pdf
+vec3 shGetIrradianceAt( in vec3 normal, in vec3 shCoefficients[ 9 ] ) {
+	// normal is assumed to have unit length
+	float x = normal.x, y = normal.y, z = normal.z;
+
+	// band 0
+	vec3 result = shCoefficients[ 0 ] * 0.886227;
+
+	// band 1
+	result += shCoefficients[ 1 ] * 2.0 * 0.511664 * y;
+	result += shCoefficients[ 2 ] * 2.0 * 0.511664 * z;
+	result += shCoefficients[ 3 ] * 2.0 * 0.511664 * x;
+
+	// band 2
+	result += shCoefficients[ 4 ] * 2.0 * 0.429043 * x * y;
+	result += shCoefficients[ 5 ] * 2.0 * 0.429043 * y * z;
+	result += shCoefficients[ 6 ] * ( 0.743125 * z * z - 0.247708 );
+	result += shCoefficients[ 7 ] * 2.0 * 0.429043 * x * z;
+	result += shCoefficients[ 8 ] * 0.429043 * ( x * x - y * y );
+
+	return result;
+}
+
+vec3 getLightProbeIrradiance( const in vec3 lightProbe[ 9 ], const in vec3 normal ) {
+	vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
+	vec3 irradiance = shGetIrradianceAt( worldNormal, lightProbe );
+	return irradiance;
+}
+
+float getDistanceAttenuation( const in float lightDistance, const in float cutoffDistance, const in float decayExponent ) {
+	#if defined ( LEGACY_LIGHTS )
+		if ( cutoffDistance > 0.0 && decayExponent > 0.0 ) {
+			return pow( saturate( - lightDistance / cutoffDistance + 1.0 ), decayExponent );
+		}
+		return 1.0;
+	#else
+		// based upon Frostbite 3 Moving to Physically-based Rendering page 32, equation 26: E[window1]
+		// https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+		// TODO: 当lightDistance为0.1时, 衰减系数为100, 应该限制在1以内
+		float distanceFalloff = 1.0 / max( pow( lightDistance, decayExponent ), 0.01 );
+		if ( cutoffDistance > 0.0 ) {
+			distanceFalloff *= pow2( saturate( 1.0 - pow4( lightDistance / cutoffDistance ) ) );
+		}
+		return distanceFalloff;
+	#endif
+}
+
+float getSpotAttenuation( const in float coneCosine, const in float penumbraCosine, const in float angleCosine ) {
+	return smoothstep( coneCosine, penumbraCosine, angleCosine );
+}
+
+// NOTE: NUM_DIR_LIGHTS => 动态替换
+#if NUM_DIR_LIGHTS > 0
+	struct DirectionalLight {
+		vec3 direction; // light.position - light.target (顶点位置指向灯光位置)
+		vec3 color;
+	};
+
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform DirectionalLight directionalLights[ NUM_DIR_LIGHTS ];
+
+	// NOTE: light is an out parameter as having it as a return value caused compiler errors on some devices
+	void getDirectionalLightInfo( const in DirectionalLight directionalLight, const in GeometricContext geometry, out IncidentLight light ) {
+		light.color = directionalLight.color;
+		light.direction = directionalLight.direction;
+		light.visible = true;
+	}
+#endif
+
+#if NUM_POINT_LIGHTS > 0
+	struct PointLight {
+		vec3 position;
+		vec3 color;
+		float distance;
+		float decay;
+	};
+
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform PointLight pointLights[ NUM_POINT_LIGHTS ];
+
+	void getPointLightInfo( const in PointLight pointLight, const in GeometricContext geometry, out IncidentLight light ) {
+		vec3 lVector = pointLight.position - geometry.position;
+		light.direction = normalize( lVector );
+		float lightDistance = length( lVector );
+		light.color = pointLight.color;
+		light.color *= getDistanceAttenuation( lightDistance, pointLight.distance, pointLight.decay );
+		light.visible = ( light.color != vec3( 0.0 ) );
+	}
+#endif
+
+#if NUM_SPOT_LIGHTS > 0
+	struct SpotLight {
+		vec3 position;
+		vec3 direction;
+		vec3 color;
+		float distance;
+		float decay;
+		float coneCos;
+		float penumbraCos;
+	};
+
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform SpotLight spotLights[ NUM_SPOT_LIGHTS ];
+
+	void getSpotLightInfo( const in SpotLight spotLight, const in GeometricContext geometry, out IncidentLight light ) {
+		vec3 lVector = spotLight.position - geometry.position;
+		light.direction = normalize( lVector );
+		float angleCos = dot( light.direction, spotLight.direction );
+		float spotAttenuation = getSpotAttenuation( spotLight.coneCos, spotLight.penumbraCos, angleCos );
+		if ( spotAttenuation > 0.0 ) {
+			float lightDistance = length( lVector );
+			light.color = spotLight.color * spotAttenuation;
+			light.color *= getDistanceAttenuation( lightDistance, spotLight.distance, spotLight.decay );
+			light.visible = ( light.color != vec3( 0.0 ) );
+		} else {
+			light.color = vec3( 0.0 );
+			light.visible = false;
+		}
+	}
+#endif
+
+#if NUM_HEMI_LIGHTS > 0
+	struct HemisphereLight {
+		vec3 direction;
+		vec3 skyColor;
+		vec3 groundColor;
+	};
+
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform HemisphereLight hemisphereLights[ NUM_HEMI_LIGHTS ];
+
+	vec3 getHemisphereLightIrradiance( const in HemisphereLight hemiLight, const in vec3 normal ) {
+		float dotNL = dot( normal, hemiLight.direction );
+		float hemiDiffuseWeight = 0.5 * dotNL + 0.5;
+		vec3 irradiance = mix( hemiLight.groundColor, hemiLight.skyColor, hemiDiffuseWeight );
+		return irradiance;
+	}
+#endif
+
+// NOTE: Only MeshStandardMaterial and MeshPhysicalMaterial are supported.
+// #if NUM_RECT_AREA_LIGHTS > 0
+// 	struct RectAreaLight {
+// 		vec3 color;
+// 		vec3 position;
+// 		vec3 halfWidth;
+// 		vec3 halfHeight;
+// 	};
+
+// 	// NOTE: 外部设置, 内部上传 (m_uniforms)
+// 	// Pre-computed values of LinearTransformedCosine approximation of BRDF
+// 	// BRDF approximation Texture is 64x64
+// 	uniform sampler2D ltc_1; // RGBA Float
+// 	uniform sampler2D ltc_2; // RGBA Float
+
+// 	uniform RectAreaLight rectAreaLights[ NUM_RECT_AREA_LIGHTS ];
+// #endif
+
+/* <normal_pars_fragment> */
+
+#ifndef FLAT_SHADED
+	varying vec3 vNormal;
+	#ifdef USE_TANGENT
+		varying vec3 vTangent;
+		varying vec3 vBitangent;
+	#endif
+#endif
+
+/* <lights_phong_pars_fragment> */
+
+varying vec3 vViewPosition;
+
+struct BlinnPhongMaterial {
+	vec3 diffuseColor;
+	vec3 specularColor;
+	float specularShininess;
+	float specularStrength;
+};
+
+void RE_Direct_BlinnPhong( const in IncidentLight directLight, const in GeometricContext geometry, const in BlinnPhongMaterial material, inout ReflectedLight reflectedLight ) {
+	float dotNL = saturate( dot( geometry.normal, directLight.direction ) );
+	vec3 irradiance = dotNL * directLight.color;
+	reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );
+	reflectedLight.directSpecular += irradiance * BRDF_BlinnPhong( directLight.direction, geometry.viewDir, geometry.normal, material.specularColor, material.specularShininess ) * material.specularStrength;
+}
+
+void RE_IndirectDiffuse_BlinnPhong( const in vec3 irradiance, const in GeometricContext geometry, const in BlinnPhongMaterial material, inout ReflectedLight reflectedLight ) {
+	reflectedLight.indirectDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );
+}
+
+#define RE_Direct RE_Direct_BlinnPhong
+#define RE_IndirectDiffuse RE_IndirectDiffuse_BlinnPhong
+
+/* <shadowmap_pars_fragment> */
+
+#if NUM_SPOT_LIGHT_COORDS > 0
+	varying vec4 vSpotLightCoord[ NUM_SPOT_LIGHT_COORDS ];
+#endif
+
+#if NUM_SPOT_LIGHT_MAPS > 0
+	uniform sampler2D spotLightMap[ NUM_SPOT_LIGHT_MAPS ];
+#endif
+
+#ifdef USE_SHADOWMAP
+	#if NUM_DIR_LIGHT_SHADOWS > 0
+		// NOTE: 外部设置, 内部上传 (m_uniforms)
+		uniform sampler2D directionalShadowMap[ NUM_DIR_LIGHT_SHADOWS ];
+		varying vec4 vDirectionalShadowCoord[ NUM_DIR_LIGHT_SHADOWS ];
+		struct DirectionalLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+		};
+		uniform DirectionalLightShadow directionalLightShadows[ NUM_DIR_LIGHT_SHADOWS ];
+	#endif
+
+	#if NUM_SPOT_LIGHT_SHADOWS > 0
+		uniform sampler2D spotShadowMap[ NUM_SPOT_LIGHT_SHADOWS ];
+		struct SpotLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+		};
+		uniform SpotLightShadow spotLightShadows[ NUM_SPOT_LIGHT_SHADOWS ];
+	#endif
+
+	#if NUM_POINT_LIGHT_SHADOWS > 0
+		uniform sampler2D pointShadowMap[ NUM_POINT_LIGHT_SHADOWS ];
+		varying vec4 vPointShadowCoord[ NUM_POINT_LIGHT_SHADOWS ];
+		struct PointLightShadow {
+			float shadowBias;
+			float shadowNormalBias;
+			float shadowRadius;
+			vec2 shadowMapSize;
+			float shadowCameraNear;
+			float shadowCameraFar;
+		};
+		uniform PointLightShadow pointLightShadows[ NUM_POINT_LIGHT_SHADOWS ];
+	#endif
+
+	// #if NUM_RECT_AREA_LIGHTS > 0
+	// 	// TODO (abelnation): create uniforms for area light shadows
+	// #endif
+
+	float texture2DCompare( sampler2D depths, vec2 uv, float compare ) {
+		return step( compare, unpackRGBAToDepth( texture2D( depths, uv ) ) );
+	}
+
+	vec2 texture2DDistribution( sampler2D shadow, vec2 uv ) {
+		return unpackRGBATo2Half( texture2D( shadow, uv ) );
+	}
+
+	float VSMShadow (sampler2D shadow, vec2 uv, float compare ){
+		float occlusion = 1.0;
+		vec2 distribution = texture2DDistribution( shadow, uv );
+		float hard_shadow = step( compare , distribution.x ); // Hard Shadow
+		if (hard_shadow != 1.0 ) {
+			float distance = compare - distribution.x ;
+			float variance = max( 0.00000, distribution.y * distribution.y );
+			float softness_probability = variance / (variance + distance * distance ); // Chebeyshevs inequality
+			softness_probability = clamp( ( softness_probability - 0.3 ) / ( 0.95 - 0.3 ), 0.0, 1.0 ); // 0.3 reduces light bleed
+			occlusion = clamp( max( hard_shadow, softness_probability ), 0.0, 1.0 );
+		}
+		return occlusion;
+	}
+
+	float getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
+		float shadow = 1.0;
+		// NOTE: 阴影坐标经过光空间变换与裁剪空间变换, 坐标范围已归一化到 (0, 1)
+		shadowCoord.xyz /= shadowCoord.w;
+		shadowCoord.z += shadowBias;
+
+		bool inFrustum = shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 && shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0;
+		bool frustumTest = inFrustum && shadowCoord.z <= 1.0;
+
+		if ( frustumTest ) {
+		#if defined( SHADOWMAP_TYPE_PCF )
+			vec2 texelSize = vec2( 1.0 ) / shadowMapSize;
+			float dx0 = - texelSize.x * shadowRadius;
+			float dy0 = - texelSize.y * shadowRadius;
+			float dx1 = + texelSize.x * shadowRadius;
+			float dy1 = + texelSize.y * shadowRadius;
+			float dx2 = dx0 / 2.0;
+			float dy2 = dy0 / 2.0;
+			float dx3 = dx1 / 2.0;
+			float dy3 = dy1 / 2.0;
+
+			shadow = (
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx0, dy0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( 0.0, dy0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx1, dy0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx2, dy2 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( 0.0, dy2 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx3, dy2 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx0, 0.0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx2, 0.0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy, shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx3, 0.0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx1, 0.0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx2, dy3 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( 0.0, dy3 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx3, dy3 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx0, dy1 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( 0.0, dy1 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, shadowCoord.xy + vec2( dx1, dy1 ), shadowCoord.z )
+			) * ( 1.0 / 17.0 );
+		#elif defined( SHADOWMAP_TYPE_PCF_SOFT )
+			vec2 texelSize = vec2( 1.0 ) / shadowMapSize;
+			float dx = texelSize.x;
+			float dy = texelSize.y;
+
+			vec2 uv = shadowCoord.xy;
+			vec2 f = fract( uv * shadowMapSize + 0.5 );
+			uv -= f * texelSize;
+
+			shadow = (
+				texture2DCompare( shadowMap, uv, shadowCoord.z ) +
+				texture2DCompare( shadowMap, uv + vec2( dx, 0.0 ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, uv + vec2( 0.0, dy ), shadowCoord.z ) +
+				texture2DCompare( shadowMap, uv + texelSize, shadowCoord.z ) +
+				mix( texture2DCompare( shadowMap, uv + vec2( -dx, 0.0 ), shadowCoord.z ),
+					texture2DCompare( shadowMap, uv + vec2( 2.0 * dx, 0.0 ), shadowCoord.z ),
+					f.x ) +
+				mix( texture2DCompare( shadowMap, uv + vec2( -dx, dy ), shadowCoord.z ),
+					texture2DCompare( shadowMap, uv + vec2( 2.0 * dx, dy ), shadowCoord.z ),
+					f.x ) +
+				mix( texture2DCompare( shadowMap, uv + vec2( 0.0, -dy ), shadowCoord.z ),
+					texture2DCompare( shadowMap, uv + vec2( 0.0, 2.0 * dy ), shadowCoord.z ),
+					f.y ) +
+				mix( texture2DCompare( shadowMap, uv + vec2( dx, -dy ), shadowCoord.z ),
+					texture2DCompare( shadowMap, uv + vec2( dx, 2.0 * dy ), shadowCoord.z ),
+					f.y ) +
+				mix( mix( texture2DCompare( shadowMap, uv + vec2( -dx, -dy ), shadowCoord.z ),
+						texture2DCompare( shadowMap, uv + vec2( 2.0 * dx, -dy ), shadowCoord.z ),
+						f.x ),
+					mix( texture2DCompare( shadowMap, uv + vec2( -dx, 2.0 * dy ), shadowCoord.z ),
+						texture2DCompare( shadowMap, uv + vec2( 2.0 * dx, 2.0 * dy ), shadowCoord.z ),
+						f.x ),
+					f.y )
+			) * ( 1.0 / 9.0 );
+		#elif defined( SHADOWMAP_TYPE_VSM )
+			shadow = VSMShadow( shadowMap, shadowCoord.xy, shadowCoord.z );
+		#else // no percentage-closer filtering:
+			shadow = texture2DCompare( shadowMap, shadowCoord.xy, shadowCoord.z );
+		#endif
+		}
+
+		return shadow;
+	}
+
+	// cubeToUV() maps a 3D direction vector suitable for cube texture mapping to a 2D
+	// vector suitable for 2D texture mapping. This code uses the following layout for the 2D texture:
+	//
+	// xzXZ
+	//  y Y
+	//
+	// Y - Positive y direction
+	// y - Negative y direction
+	// X - Positive x direction
+	// x - Negative x direction
+	// Z - Positive z direction
+	// z - Negative z direction
+	//
+	// Source and test bed: https://gist.github.com/tschw/da10c43c467ce8afd0c4
+
+	vec2 cubeToUV( vec3 v, float texelSizeY ) {
+		// Number of texels to avoid at the edge of each square
+		vec3 absV = abs( v );
+
+		// Intersect unit cube
+		float scaleToCube = 1.0 / max( absV.x, max( absV.y, absV.z ) );
+		absV *= scaleToCube;
+
+		// Apply scale to avoid seams
+
+		// two texels less per square (one texel will do for NEAREST)
+		v *= scaleToCube * ( 1.0 - 2.0 * texelSizeY );
+
+		// Unwrap
+
+		// space: -1 ... 1 range for each square
+		//
+		// #X##		dim    := ( 4 , 2 )
+		//  # #		center := ( 1 , 1 )
+
+		vec2 planar = v.xy;
+
+		float almostATexel = 1.5 * texelSizeY;
+		float almostOne = 1.0 - almostATexel;
+
+		if ( absV.z >= almostOne ) {
+			if ( v.z > 0.0 )
+				planar.x = 4.0 - v.x;
+		} else if ( absV.x >= almostOne ) {
+			float signX = sign( v.x );
+			planar.x = v.z * signX + 2.0 * signX;
+		} else if ( absV.y >= almostOne ) {
+			float signY = sign( v.y );
+			planar.x = v.x + 2.0 * signY + 2.0;
+			planar.y = v.z * signY - 2.0;
+		}
+
+		// Transform to UV space
+
+		// scale := 0.5 / dim
+		// translate := ( center + 0.5 ) / dim
+		return vec2( 0.125, 0.25 ) * planar + vec2( 0.375, 0.75 );
+	}
+
+	float getPointShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord, float shadowCameraNear, float shadowCameraFar ) {
+		vec2 texelSize = vec2( 1.0 ) / ( shadowMapSize * vec2( 4.0, 2.0 ) );
+
+		// for point lights, the uniform @vShadowCoord is re-purposed to hold
+		// the vector from the light to the world-space position of the fragment.
+		vec3 lightToPosition = shadowCoord.xyz;
+
+		// dp = normalized distance from light to fragment position
+		float dp = ( length( lightToPosition ) - shadowCameraNear ) / ( shadowCameraFar - shadowCameraNear ); // need to clamp?
+		dp += shadowBias;
+
+		// bd3D = base direction 3D
+		vec3 bd3D = normalize( lightToPosition );
+
+		#if defined( SHADOWMAP_TYPE_PCF ) || defined( SHADOWMAP_TYPE_PCF_SOFT ) || defined( SHADOWMAP_TYPE_VSM )
+			vec2 offset = vec2( - 1, 1 ) * shadowRadius * texelSize.y;
+			return (
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.xyy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.yyy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.xyx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.yyx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.xxy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.yxy, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.xxx, texelSize.y ), dp ) +
+				texture2DCompare( shadowMap, cubeToUV( bd3D + offset.yxx, texelSize.y ), dp )
+			) * ( 1.0 / 9.0 );
+		#else // no percentage-closer filtering
+			return texture2DCompare( shadowMap, cubeToUV( bd3D, texelSize.y ), dp );
+		#endif
+	}
+#endif
+
+/* <logdepthbuf_pars_fragment> */
+
+#if defined( USE_LOGDEPTHBUF ) && defined( USE_LOGDEPTHBUF_EXT )
+	// NOTE: 内部设置, 内部上传 (p_uniforms)
+	uniform float logDepthBufFC;
+	varying float vFragDepth;
+	varying float vIsPerspective;
+#endif
+
+// NOTE: 自定义深度
+#ifdef USE_CUSTOM_DEPTH
+	varying float vFragDepth;
+	varying float vIsPerspective;
+#endif
+
+/* <clipping_planes_pars_fragment> */
+
+// NOTE: NUM_CLIPPING_PLANES => 动态替换
+#if NUM_CLIPPING_PLANES > 0
+	varying vec3 vClipPosition;
+	// NOTE: 外部设置, 内部上传 (m_uniforms)
+	uniform vec4 clippingPlanes[ NUM_CLIPPING_PLANES ]; // Material.clippingPlanes
+#endif
+
+// NOTE: 动态生成
+/* <tonemapping_pars_fragment> */
+
+// NOTE: TONE_MAPPING => (Material.toneMapped && WebGLRenderer.toneMapping !== NoToneMapping)
+#if defined( TONE_MAPPING )
+	// NOTE: 内部设置, 内部上传 (p_uniforms)
+	uniform float toneMappingExposure; // WebGLRenderer.toneMappingExposure
+
+	// exposure only
+	vec3 LinearToneMapping( vec3 color ) {
+		return saturate( toneMappingExposure * color );
+	}
+
+	// source: https://www.cs.utah.edu/docs/techreports/2002/pdf/UUCS-02-001.pdf
+	vec3 ReinhardToneMapping( vec3 color ) {
+		color *= toneMappingExposure;
+		return saturate( color / ( vec3( 1 ) + color ) );
+	}
+
+	// source: http://filmicworlds.com/blog/filmic-tonemapping-operators/
+	vec3 OptimizedCineonToneMapping( vec3 color ) {
+		// optimized filmic operator by Jim Hejl and Richard Burgess-Dawson
+		color *= toneMappingExposure;
+		color = max( vec3( 0.0 ), color - 0.004 );
+		return pow( ( color * ( 6.2 * color + 0.5 ) ) / ( color * ( 6.2 * color + 1.7 ) + 0.06 ), vec3( 2.2 ) );
+	}
+
+	// source: https://github.com/selfshadow/ltc_code/blob/master/webgl/shaders/ltc/ltc_blit.fs
+	vec3 RRTAndODTFit( vec3 v ) {
+		vec3 a = v * ( v + 0.0245786 ) - 0.000090537;
+		vec3 b = v * ( 0.983729 * v + 0.4329510 ) + 0.238081;
+		return a / b;
+	}
+
+	// this implementation of ACES is modified to accommodate a brighter viewing environment.
+	// the scale factor of 1/0.6 is subjective. see discussion in #19621.
+	vec3 ACESFilmicToneMapping( vec3 color ) {
+		// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+		const mat3 ACESInputMat = mat3(
+			vec3( 0.59719, 0.07600, 0.02840 ), // transposed from source
+			vec3( 0.35458, 0.90834, 0.13383 ),
+			vec3( 0.04823, 0.01566, 0.83777 )
+		);
+
+		// ODT_SAT => XYZ => D60_2_D65 => sRGB
+		const mat3 ACESOutputMat = mat3(
+			vec3(  1.60475, -0.10208, -0.00327 ), // transposed from source
+			vec3( -0.53108,  1.10813, -0.07276 ),
+			vec3( -0.07367, -0.00605,  1.07602 )
+		);
+
+		color *= toneMappingExposure / 0.6;
+		color = ACESInputMat * color;
+
+		// Apply RRT and ODT
+		color = RRTAndODTFit( color );
+		color = ACESOutputMat * color;
+		return saturate( color );
+	}
+
+	vec3 CustomToneMapping( vec3 color ) {
+		// ReinhardToneMapping
+		return vec3( 1 ) - exp( -color * toneMappingExposure );
+	}
+
+	// vec3 toneMapping( vec3 color ) { return ReinhardToneMapping( color ); } // 倾向明亮的区域的，暗的区域会不那么精细也不那么有区分度
+	// vec3 toneMapping( vec3 color ) { return OptimizedCineonToneMapping( color ); }
+	// vec3 toneMapping( vec3 color ) { return RRTAndODTFit( color ); } // 不能设置曝光度
+	// vec3 toneMapping( vec3 color ) { return ACESFilmicToneMapping( color ); }
+	vec3 toneMapping( vec3 color ) { return CustomToneMapping( color ); }
+#endif
+
+// NOTE: 动态生成
+/* <colorspace_pars_fragment> */
+
+vec4 LinearToLinear( in vec4 value ) {
+	return value;
+}
+vec4 LinearTosRGB( in vec4 value ) {
+	return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
+}
+vec4 linearToOutputTexel( vec4 value ) { return LinearTosRGB( value ); }
+
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
+// ============================================================================================================================================
 
 void main() {
-	outColor = vColor;
-}
-				`,
+	/* <clipping_planes_fragment> */
 
-			} );
-		
-			mesh = new Mesh( geometry, material );
+	#if NUM_CLIPPING_PLANES > 0
+		vec4 plane;
+
+		#pragma unroll_loop_start
+		for ( int i = 0; i < UNION_CLIPPING_PLANES; i ++ ) {
+			plane = clippingPlanes[ i ];
+			if ( dot( vClipPosition, plane.xyz ) > plane.w ) discard;
+		}
+		#pragma unroll_loop_end
+
+		#if UNION_CLIPPING_PLANES < NUM_CLIPPING_PLANES
+			bool clipped = true;
+
+			#pragma unroll_loop_start
+			for ( int i = UNION_CLIPPING_PLANES; i < NUM_CLIPPING_PLANES; i ++ ) {
+				plane = clippingPlanes[ i ];
+				clipped = ( dot( vClipPosition, plane.xyz ) > plane.w ) && clipped;
+			}
+			#pragma unroll_loop_end
+
+			if ( clipped ) discard;
+		#endif
+	#endif
+
+	/*  */
+
+	vec4 diffuseColor = vec4( diffuse, opacity );
+	ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
+	vec3 totalEmissiveRadiance = emissive;
+
+	/* <logdepthbuf_fragment> */
+
+	#if defined( USE_LOGDEPTHBUF ) && defined( USE_LOGDEPTHBUF_EXT )
+		// NOTE: Doing a strict comparison with == 1.0 can cause noise artifacts on some platforms. See issue #17623.
+		gl_FragDepthEXT = vIsPerspective == 0.0 ? gl_FragCoord.z : log2( vFragDepth ) * logDepthBufFC * 0.5;
+		// gl_FragDepthEXT = vIsPerspective == 0.0 ? gl_FragCoord.z : log2( vFragDepth ) * logDepthBufFC - 1.0; // 使用 -1.0 也可以
+	#endif
+
+	// NOTE: 自定义深度
+	#ifdef USE_CUSTOM_DEPTH
+		gl_FragDepthEXT = vIsPerspective == 0.0 ? gl_FragCoord.z : vFragDepth;
+	#endif
+
+	/* <map_fragment> */
+
+	#ifdef USE_MAP
+		vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+		// NOTE: DECODE_VIDEO_TEXTURE => (MeshPhongMaterial.map.isVideoTexture && MeshPhongMaterial.map.colorSpace === SRGBColorSpace)
+		#ifdef DECODE_VIDEO_TEXTURE
+			// use inline sRGB decode until browsers properly support SRGB8_APLHA8 with video textures
+			sampledDiffuseColor = vec4( mix( pow( sampledDiffuseColor.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), sampledDiffuseColor.rgb * 0.0773993808, vec3( lessThanEqual( sampledDiffuseColor.rgb, vec3( 0.04045 ) ) ) ), sampledDiffuseColor.w );
+		#endif
+		diffuseColor *= sampledDiffuseColor;
+	#endif
+
+	/* <color_fragment> */
+
+	#if defined( USE_COLOR_ALPHA )
+		diffuseColor *= vColor;
+	#elif defined( USE_COLOR )
+		diffuseColor.rgb *= vColor;
+	#endif
+
+	/* <alphatest_fragment> */
+
+	#ifdef USE_ALPHATEST
+		if ( diffuseColor.a < alphaTest ) discard;
+	#endif
+
+	/* <alphahash_fragment> */
+
+	#ifdef USE_ALPHAHASH
+		if ( diffuseColor.a < getAlphaHashThreshold( vPosition ) ) discard;
+	#endif
+
+	/* <specularmap_fragment> */
+
+	float specularStrength;
+	#ifdef USE_SPECULARMAP
+		vec4 texelSpecular = texture2D( specularMap, vSpecularMapUv );
+		specularStrength = texelSpecular.r;
+	#else
+		specularStrength = 1.0;
+	#endif
+
+	/* <normal_fragment_begin> */
+
+	float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;
+
+	#ifdef FLAT_SHADED
+		vec3 fdx = dFdx( vViewPosition );
+		vec3 fdy = dFdy( vViewPosition );
+		vec3 normal = normalize( cross( fdx, fdy ) );
+	#else
+		vec3 normal = normalize( vNormal );
+		#ifdef DOUBLE_SIDED
+			normal *= faceDirection;
+		#endif
+	#endif
+
+	// #if defined( USE_NORMALMAP_TANGENTSPACE ) || defined( USE_CLEARCOAT_NORMALMAP ) || defined( USE_ANISOTROPY )
+	// 	#ifdef USE_TANGENT
+	// 		mat3 tbn = mat3( normalize( vTangent ), normalize( vBitangent ), normal );
+	// 	#else
+	// 		mat3 tbn = getTangentFrame( - vViewPosition, normal,
+	// 		#if defined( USE_NORMALMAP )
+	// 			vNormalMapUv
+	// 		#elif defined( USE_CLEARCOAT_NORMALMAP )
+	// 			vClearcoatNormalMapUv
+	// 		#else
+	// 			vUv
+	// 		#endif
+	// 		);
+	// 	#endif
+
+	// 	#if defined( DOUBLE_SIDED ) && ! defined( FLAT_SHADED )
+	// 		tbn[0] *= faceDirection;
+	// 		tbn[1] *= faceDirection;
+	// 	#endif
+	// #endif
+
+	// #ifdef USE_CLEARCOAT_NORMALMAP
+	// 	#ifdef USE_TANGENT
+	// 		mat3 tbn2 = mat3( normalize( vTangent ), normalize( vBitangent ), normal );
+	// 	#else
+	// 		mat3 tbn2 = getTangentFrame( - vViewPosition, normal, vClearcoatNormalMapUv );
+	// 	#endif
+
+	// 	#if defined( DOUBLE_SIDED ) && ! defined( FLAT_SHADED )
+	// 		tbn2[0] *= faceDirection;
+	// 		tbn2[1] *= faceDirection;
+	// 	#endif
+	// #endif
+
+	// non perturbed normal for clearcoat among others
+
+	// vec3 geometryNormal = normal;
+
+	/* <normal_fragment_maps> */
+
+	#ifdef USE_NORMALMAP_OBJECTSPACE
+		// overrides both flatShading and attribute normals
+		normal = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+		#ifdef FLIP_SIDED
+			normal = - normal;
+		#endif
+		#ifdef DOUBLE_SIDED
+			normal = normal * faceDirection;
+		#endif
+		normal = normalize( normalMatrix * normal );
+	#elif defined( USE_NORMALMAP_TANGENTSPACE )
+		vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+		mapN.xy *= normalScale;
+		normal = normalize( tbn * mapN );
+	#elif defined( USE_BUMPMAP )
+		normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd(), faceDirection );
+	#endif
+
+	/* <lights_phong_fragment> */
+
+	BlinnPhongMaterial material;
+	material.diffuseColor = diffuseColor.rgb;
+	material.specularColor = specular;
+	material.specularShininess = shininess;
+	material.specularStrength = specularStrength;
+
+	/* <lights_fragment_begin> */
+
+	/**
+	 * This is a template that can be used to light a material, it uses pluggable RenderEquations (RE)for specific lighting scenarios.
+	 *
+	 * Instructions for use:
+	 * - Ensure that both RE_Direct, RE_IndirectDiffuse and RE_IndirectSpecular are defined
+	 * - Create a material parameter that is to be passed as the third parameter to your lighting functions.
+	 *
+	 * TODO:
+	 * - Add area light support.
+	 * - Add sphere light support.
+	 * - Add diffuse light probe (irradiance cubemap) support.
+	 */
+
+	GeometricContext geometry;
+	geometry.position = - vViewPosition;
+	geometry.normal = normal;
+	geometry.viewDir = ( isOrthographic ) ? vec3( 0, 0, 1 ) : normalize( vViewPosition );
+	#ifdef USE_CLEARCOAT
+		geometry.clearcoatNormal = clearcoatNormal;
+	#endif
+
+	// NOTE: USE_IRIDESCENCE => MeshPhysicalMaterial.iridescence > 0
+	#ifdef USE_IRIDESCENCE
+		float dotNVi = saturate( dot( normal, geometry.viewDir ) );
+
+		if ( material.iridescenceThickness == 0.0 ) {
+			material.iridescence = 0.0;
+		} else {
+			material.iridescence = saturate( material.iridescence );
+		}
+
+		if ( material.iridescence > 0.0 ) {
+			material.iridescenceFresnel = evalIridescence( 1.0, material.iridescenceIOR, dotNVi, material.iridescenceThickness, material.specularColor );
+			// Iridescence F0 approximation
+			material.iridescenceF0 = Schlick_to_F0( material.iridescenceFresnel, 1.0, dotNVi );
+		}
+	#endif
+
+	IncidentLight directLight; // 入射光 直射光
+
+	#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
+		DirectionalLight directionalLight;
+		#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+			DirectionalLightShadow directionalLightShadow;
+		#endif
+
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {
+			directionalLight = directionalLights[ i ];
+			getDirectionalLightInfo( directionalLight, geometry, directLight );
+
+			#if defined( USE_SHADOWMAP ) && ( UNROLLED_LOOP_INDEX < NUM_DIR_LIGHT_SHADOWS )
+				directionalLightShadow = directionalLightShadows[ i ];
+				directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
+			#endif
+
+			RE_Direct( directLight, geometry, material, reflectedLight );
+		}
+		#pragma unroll_loop_end
+	#endif
+
+	#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )
+		PointLight pointLight;
+		#if defined( USE_SHADOWMAP ) && NUM_POINT_LIGHT_SHADOWS > 0
+			PointLightShadow pointLightShadow;
+		#endif
+
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_POINT_LIGHTS; i ++ ) {
+			pointLight = pointLights[ i ];
+			getPointLightInfo( pointLight, geometry, directLight );
+
+			#if defined( USE_SHADOWMAP ) && ( UNROLLED_LOOP_INDEX < NUM_POINT_LIGHT_SHADOWS )
+				pointLightShadow = pointLightShadows[ i ];
+				directLight.color *= ( directLight.visible && receiveShadow ) ? getPointShadow( pointShadowMap[ i ], pointLightShadow.shadowMapSize, pointLightShadow.shadowBias, pointLightShadow.shadowRadius, vPointShadowCoord[ i ], pointLightShadow.shadowCameraNear, pointLightShadow.shadowCameraFar ) : 1.0;
+			#endif
+
+			RE_Direct( directLight, geometry, material, reflectedLight );
+		}
+		#pragma unroll_loop_end
+
+	#endif
+
+	#if ( NUM_SPOT_LIGHTS > 0 ) && defined( RE_Direct )
+		SpotLight spotLight;
+		vec4 spotColor;
+		vec3 spotLightCoord;
+		bool inSpotLightMap;
+
+		#if defined( USE_SHADOWMAP ) && NUM_SPOT_LIGHT_SHADOWS > 0
+			SpotLightShadow spotLightShadow;
+		#endif
+
+		#pragma unroll_loop_start
+		for ( int i = 0; i < NUM_SPOT_LIGHTS; i ++ ) {
+			spotLight = spotLights[ i ];
+			getSpotLightInfo( spotLight, geometry, directLight );
+
+			// spot lights are ordered [shadows with maps, shadows without maps, maps without shadows, none]
+			#if ( UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS )
+				#define SPOT_LIGHT_MAP_INDEX UNROLLED_LOOP_INDEX
+			#elif ( UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS )
+				#define SPOT_LIGHT_MAP_INDEX NUM_SPOT_LIGHT_MAPS
+			#else
+				#define SPOT_LIGHT_MAP_INDEX ( UNROLLED_LOOP_INDEX - NUM_SPOT_LIGHT_SHADOWS + NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS )
+			#endif
+
+			#if ( SPOT_LIGHT_MAP_INDEX < NUM_SPOT_LIGHT_MAPS )
+				spotLightCoord = vSpotLightCoord[ i ].xyz / vSpotLightCoord[ i ].w;
+				inSpotLightMap = all( lessThan( abs( spotLightCoord * 2. - 1. ), vec3( 1.0 ) ) );
+				spotColor = texture2D( spotLightMap[ SPOT_LIGHT_MAP_INDEX ], spotLightCoord.xy );
+				directLight.color = inSpotLightMap ? directLight.color * spotColor.rgb : directLight.color;
+			#endif
+
+			#undef SPOT_LIGHT_MAP_INDEX
+
+			#if defined( USE_SHADOWMAP ) && ( UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS )
+				spotLightShadow = spotLightShadows[ i ];
+				directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( spotShadowMap[ i ], spotLightShadow.shadowMapSize, spotLightShadow.shadowBias, spotLightShadow.shadowRadius, vSpotLightCoord[ i ] ) : 1.0;
+			#endif
+
+			RE_Direct( directLight, geometry, material, reflectedLight );
+		}
+		#pragma unroll_loop_end
+
+	#endif
+
+	// NOTE: RE_Direct_RectArea => <lights_physical_pars_fragment>
+	// #if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )
+	// 	RectAreaLight rectAreaLight;
+
+	// 	#pragma unroll_loop_start
+	// 	for ( int i = 0; i < NUM_RECT_AREA_LIGHTS; i ++ ) {
+	// 		rectAreaLight = rectAreaLights[ i ];
+	// 		RE_Direct_RectArea( rectAreaLight, geometry, material, reflectedLight );
+	// 	}
+	// 	#pragma unroll_loop_end
+	// #endif
+
+	#if defined( RE_IndirectDiffuse )
+		vec3 iblIrradiance = vec3( 0.0 );
+		// NOTE: getAmbientLightIrradiance() 没有任何计算，直接返回了
+		// vec3 irradiance = getAmbientLightIrradiance( ambientLightColor );
+		vec3 irradiance = ambientLightColor;
+		// TODO: 暂时屏蔽 lightProbe
+		// irradiance += getLightProbeIrradiance( lightProbe, geometry.normal );
+
+		#if ( NUM_HEMI_LIGHTS > 0 )
+			#pragma unroll_loop_start
+			for ( int i = 0; i < NUM_HEMI_LIGHTS; i ++ ) {
+				irradiance += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry.normal );
+			}
+			#pragma unroll_loop_end
+		#endif
+	#endif
+
+	// NOTE: RE_IndirectSpecular => <lights_physical_pars_fragment>
+	// #if defined( RE_IndirectSpecular )
+	// 	vec3 radiance = vec3( 0.0 );
+	// 	vec3 clearcoatRadiance = vec3( 0.0 );
+	// #endif
+
+	/* <lights_fragment_maps> */
+
+	#if defined( RE_IndirectDiffuse )
+		#ifdef USE_LIGHTMAP
+			vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
+			vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
+			irradiance += lightMapIrradiance;
+		#endif
+
+		#if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
+			iblIrradiance += getIBLIrradiance( geometry.normal );
+		#endif
+	#endif
+
+	// #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
+	// 	#ifdef USE_ANISOTROPY
+	// 		radiance += getIBLAnisotropyRadiance( geometry.viewDir, geometry.normal, material.roughness, material.anisotropyB, material.anisotropy );
+	// 	#else
+	// 		radiance += getIBLRadiance( geometry.viewDir, geometry.normal, material.roughness );
+	// 	#endif
+
+	// 	#ifdef USE_CLEARCOAT
+	// 		clearcoatRadiance += getIBLRadiance( geometry.viewDir, geometry.clearcoatNormal, material.clearcoatRoughness );
+	// 	#endif
+	// #endif
+
+	/* <lights_fragment_end> */
+
+	#if defined( RE_IndirectDiffuse )
+		RE_IndirectDiffuse( irradiance, geometry, material, reflectedLight );
+	#endif
+
+	// #if defined( RE_IndirectSpecular )
+	// 	RE_IndirectSpecular( radiance, iblIrradiance, clearcoatRadiance, geometry, material, reflectedLight );
+	// #endif
+
+	/*  */
+
+	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
+
+	/* <opaque_fragment> */
+
+	// NOTE: OPAQUE => (Material.transparent === false && Material.blending === NormalBlending)
+	#ifdef OPAQUE
+		diffuseColor.a = 1.0;
+	#endif
+
+	// NOTE: USE_TRANSMISSION => MeshPhysicalMaterial.transmission
+	// #ifdef USE_TRANSMISSION
+	// 	diffuseColor.a *= material.transmissionAlpha;
+	// #endif
+
+	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+
+	/* <tonemapping_fragment> */
+
+	#if defined( TONE_MAPPING )
+		gl_FragColor.rgb = toneMapping( gl_FragColor.rgb );
+	#endif
+
+	/* <colorspace_fragment> */
+
+	// linearToSRGB
+	// gl_FragColor = linearToOutputTexel( gl_FragColor );
+	// gamma矫正
+	gl_FragColor = pow( gl_FragColor, vec4( 1.0 / 2.2 ) );
+
+	/* <fog_fragment> */
+
+	#ifdef USE_FOG
+		#ifdef FOG_EXP2
+			float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+		#else
+			float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+		#endif
+		gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
+	#endif
+
+	/* <premultiplied_alpha_fragment> */
+
+	// NOTE: PREMULTIPLIED_ALPHA => Material.premultipliedAlpha
+	// TODO: 如果材质预乘了alpha, 是否就不需要在shader中再乘alpha了, 只需要修改混合因子即可 (@see WebGLState.setBlending)
+	#ifdef PREMULTIPLIED_ALPHA
+		// Get get normal blending with premultipled, use with CustomBlending, OneFactor, OneMinusSrcAlphaFactor, AddEquation.
+		gl_FragColor.rgb *= gl_FragColor.a;
+	#endif
+
+	/* <dithering_fragment> */
+
+	#ifdef DITHERING
+		gl_FragColor.rgb = dithering( gl_FragColor.rgb );
+	#endif
+}
+			`;
+			const customMaterial = new RawShaderMaterial( { glslVersion: GLSL3, uniforms, vertexShader, fragmentShader } );
+			// NOTE: WebGLPrograms.getProgramCacheKey() 排除了对 RawShaderMaterial 参数的检查
+			// 因此, 需要手动设置 customProgramCacheKey
+			customMaterial.customProgramCacheKey = function () {
+
+				// 以下是需要重新编译program的参数
+				const array = [];
+				array.push( directionLight.visible );
+				array.push( pointLight.visible );
+				array.push( spotLight.visible );
+				array.push( hemiLight.visible );
+				return array.join();
+
+			};
+
+			// customMaterial.premultipliedAlpha = true;
+			customMaterial.transparent = true; // NOTE: 用于内部判断。如果为false, 则会关闭blend
+			customMaterial.fog = true; // NOTE: 用于内部判断
+			customMaterial.lights = true; // NOTE: 用于内部判断
+			// customMaterial.clipping = true; // NOTE: 用于内部判断
+			// customMaterial.clippingPlanes = clippingPlanes;
+			customMaterial.uniforms.diffuse.value.set( 0x666666 );
+			customMaterial.uniforms.opacity.value = 0.5;
+			customMaterial.uniforms.map.value = texture;
+			texture.updateMatrix(); // NOTE: 需要更新纹理的矩阵
+			customMaterial.uniforms.mapTransform.value = texture.matrix;
+
+			// const mesh = new Mesh( geometry, material );
+			const mesh = new Mesh( geometry, customMaterial );
 			mesh.name = 'mesh';
+			mesh.castShadow = true;
 			mesh.matrixAutoUpdate = false;
-			mesh.position.set( - 4, 0, 0 );
+			mesh.scale.setScalar( SCALAR );
 			mesh.rotateX( - Math.PI / 2 );
 			mesh.updateMatrix();
 			mesh.updateMatrixWorld();
 			scene.add( mesh );
+			meshes.push( mesh );
 
-			const mesh2 = mesh.clone();
+			// debug 对数深度
+
+			const material2 = new MeshPhongMaterial( { color: 0x006666 } );
+			material2.transparent = true;
+			material2.opacity = 0.6;
+			material2.fog = false;
+
+			// NOTE: clone uniforms
+			const customMaterial2 = new RawShaderMaterial( { glslVersion: GLSL3, uniforms: UniformsUtils.clone( uniforms ), vertexShader, fragmentShader } );
+			customMaterial2.customProgramCacheKey = function () {
+
+				const array = [];
+				array.push( directionLight.visible );
+				array.push( pointLight.visible );
+				array.push( spotLight.visible );
+				array.push( hemiLight.visible );
+				return array.join();
+
+			};
+
+			customMaterial2.transparent = true;
+			customMaterial2.fog = true;
+			customMaterial2.lights = true;
+			customMaterial2.uniforms.diffuse.value.set( 0x006666 );
+			customMaterial2.uniforms.opacity.value = 0.6;
+			customMaterial.uniforms.map.value = texture;
+			texture.updateMatrix();
+			customMaterial2.uniforms.mapTransform.value = texture.matrix;
+
+			// const mesh2 = new Mesh( geometry, material2 );
+			const mesh2 = new Mesh( geometry, customMaterial2 );
 			mesh2.name = 'mesh2';
+			mesh2.castShadow = true;
 			mesh2.matrixAutoUpdate = false;
-			mesh2.position.set( 4, 0, 0 );
+			// NOTE: x, y 方向移动 1，用于对数深度调试
+			mesh2.position.set( 1, 1, - 1 * SCALAR );
+			mesh2.scale.setScalar( SCALAR );
+			mesh2.rotateX( - Math.PI / 2 );
 			mesh2.updateMatrix();
 			mesh2.updateMatrixWorld();
 			scene.add( mesh2 );
+			meshes.push( mesh2 );
+
+			// debug 阴影
+
+			plane = new Mesh( new PlaneGeometry( 4, 4 ), new MeshPhongMaterial( { color: 0xaaaaaa, fog: false, dithering: true } ) );
+			plane.name = 'plane';
+			plane.receiveShadow = true;
+			plane.matrixAutoUpdate = false;
+			plane.position.set( 0, - 1.5 * SCALAR, 0 );
+			plane.scale.setScalar( 3 * SCALAR );
+			plane.rotateX( - Math.PI / 2 );
+			plane.updateMatrix();
+			plane.updateMatrixWorld();
+			scene.add( plane );
 
 		}
 
 		function initGUI() {
 
 			const gui = new GUI();
-			const gui_options = {
-				'ambient.visible': true,
+
+			// ================================== lights gui =======================================
+
+			const lightsFolder = gui.addFolder( 'Lights' );
+			lightsFolder.close();
+			const lightsFolderOptions = {
+				'ambient.visible': ambientLight.visible,
 				'ambient.intensity': ambientLight.intensity,
 				'ambient.color': ambientLight.color.getHex(),
-				'direction.visible': true,
+				'direction.visible': directionLight.visible,
 				'direction.intensity': directionLight.intensity,
-				'direction.color': directionLight.color.getHex(),
-				'material.shininess': 30,
-				'material.specular': mesh.material.specular.getHex(),
-				'material.emissive': mesh.material.emissive.getHex(),
-				'material.dithering': mesh.material.dithering,
-				'material.flatShading': mesh.material.flatShading,
+				'point.visible': pointLight.visible,
+				'point.intensity': pointLight.intensity,
+				'spot.visible': spotLight.visible,
+				'spot.intensity': spotLight.intensity,
+				'hemi.visible': hemiLight.visible,
+				'hemi.intensity': hemiLight.intensity,
 			};
-			gui.add( gui_options, 'ambient.visible' ).onChange( ( value ) => {
+
+			lightsFolder.add( lightsFolderOptions, 'ambient.visible' ).onChange( ( value ) => {
 
 				ambientLight.visible = value;
 				isDirty = true;
-		
+
 			} );
-			gui.add( gui_options, 'ambient.intensity', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'ambient.intensity', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
 
 				ambientLight.intensity = value;
 				isDirty = true;
 
 			} );
-			gui.addColor( gui_options, 'ambient.color' ).onChange( ( value ) => {
+			lightsFolder.addColor( lightsFolderOptions, 'ambient.color' ).onChange( ( value ) => {
 
 				ambientLight.color.set( value );
 				isDirty = true;
 
 			} );
-			gui.add( gui_options, 'direction.visible' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'direction.visible' ).onChange( ( value ) => {
 
 				directionLight.visible = value;
 				isDirty = true;
-		
+
 			} );
-			gui.add( gui_options, 'direction.intensity', 0, 2 ).step( 0.1 ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'direction.intensity' ).onChange( ( value ) => {
 
 				directionLight.intensity = value;
 				isDirty = true;
 
 			} );
-			gui.addColor( gui_options, 'direction.color' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'point.visible' ).onChange( ( value ) => {
 
-				directionLight.color.set( value );
+				pointLight.visible = value;
 				isDirty = true;
 
 			} );
-			gui.add( gui_options, 'material.shininess', 0, 256 ).step( 10 ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'point.intensity' ).onChange( ( value ) => {
 
-				mesh.material.shininess = value;
+				pointLight.intensity = value;
 				isDirty = true;
 
 			} );
-			gui.addColor( gui_options, 'material.specular' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'spot.visible' ).onChange( ( value ) => {
 
-				mesh.material.specular.set( value );
+				spotLight.visible = value;
 				isDirty = true;
 
 			} );
-			gui.addColor( gui_options, 'material.emissive' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'spot.intensity' ).onChange( ( value ) => {
 
-				mesh.material.emissive.set( value );
+				spotLight.intensity = value;
 				isDirty = true;
 
 			} );
-			gui.add( gui_options, 'material.dithering' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'hemi.visible' ).onChange( ( value ) => {
 
-				mesh.material.dithering = value;
-				mesh.material.needsUpdate = true;
+				hemiLight.visible = value;
 				isDirty = true;
 
 			} );
-			gui.add( gui_options, 'material.flatShading' ).onChange( ( value ) => {
+			lightsFolder.add( lightsFolderOptions, 'hemi.intensity' ).onChange( ( value ) => {
 
-				mesh.material.flatShading = value;
-				mesh.material.needsUpdate = true;
+				hemiLight.intensity = value;
 				isDirty = true;
 
 			} );
+
+			// ================================== shadow gui =======================================
+
+			const shadowsFolder = gui.addFolder( 'shadows' );
+			const shadowsFolderOptions = {
+				'viewShadowMap': false,
+				'shadowType': renderer.shadowMap.type,
+				'directionShadow.bias': directionLight.shadow.bias,
+				'directionShadow.normalBias': directionLight.shadow.normalBias,
+				'directionShadow.radius': directionLight.shadow.radius,
+			};
+			let shadowPlane;
+			shadowsFolder.add( shadowsFolderOptions, 'viewShadowMap' ).onChange( ( value ) => {
+
+				if ( ! directionLight.shadow.map ) return;
+
+				if ( value ) {
+
+					const material = new ShaderMaterial( {
+						uniforms: {
+							depthMap: { value: directionLight.shadow.map.texture }
+						},
+						vertexShader: `
+							varying vec2 vUv;
+							void main() {
+								vUv = uv;
+								gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+							}
+						`,
+						fragmentShader: `
+							uniform float opacity;
+							uniform sampler2D depthMap;
+							varying vec2 vUv;
+							#include <packing>
+							void main() {
+								float depth = 1.0 - unpackRGBAToDepth( texture2D( depthMap, vUv ) );
+								gl_FragColor = vec4( vec3( depth ), 1.0 );
+							}
+						`
+					} );
+					material.fog = false;
+
+					shadowPlane = new Mesh( new PlaneGeometry( 1, 1 ), material );
+					shadowPlane.name = 'shadowPlane';
+					shadowPlane.matrixAutoUpdate = false;
+					shadowPlane.position.set( 4 * SCALAR, 0, 0 );
+					shadowPlane.scale.setScalar( 2 * SCALAR );
+					shadowPlane.updateMatrix();
+					shadowPlane.updateMatrixWorld();
+					scene.add( shadowPlane );
+
+				} else if ( shadowPlane ) {
+
+					shadowPlane.geometry.dispose();
+					shadowPlane.material.dispose();
+					scene.remove( shadowPlane );
+					shadowPlane = null;
+
+				}
+
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'shadowType', { 'basic': BasicShadowMap, 'PCF': PCFShadowMap, 'PCFSoft': PCFSoftShadowMap, 'VSM': VSMShadowMap } ).onChange( ( value ) => {
+
+				renderer.shadowMap.type = value;
+				// NOTE: 接收阴影的对象需要更新material
+				plane.material.needsUpdate = true;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'directionShadow.bias', 0, 0.2 ).step( 0.001 ).onChange( ( value ) => {
+
+				directionLight.shadow.bias = value;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'directionShadow.normalBias' ).onChange( ( value ) => {
+
+				directionLight.shadow.normalBias = value;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'directionShadow.radius', 1, 10 ).step( 1 ).onChange( ( value ) => {
+
+				// NOTE: radius只对PCFShadowMap有用
+				if ( renderer.shadowMap.type !== PCFShadowMap ) return;
+				directionLight.shadow.radius = value;
+				isDirty = true;
+
+			} );
+
+			// ================================== material gui =======================================
+
+			const materialFolder = gui.addFolder( 'Material' );
+			const materialFolderOptions = {};
+			const material = meshes[ 0 ].material;
+			if ( material.isMeshPhongMaterial ) {
+
+				materialFolderOptions[ 'logarithmicDepthBuffer' ] = renderer.capabilities.logarithmicDepthBuffer;
+				materialFolder.add( materialFolderOptions, 'logarithmicDepthBuffer' ).onChange( ( value ) => {
+
+					renderer.capabilities.logarithmicDepthBuffer = value;
+					// NOTE: 需要更新material。TODO: 通过设置customProgramCacheKey自动触发更新
+					meshes.forEach( ( mesh ) => mesh.material.needsUpdate = true );
+					isDirty = true;
+
+				} );
+
+			} else if ( material.isRawShaderMaterial ) {
+
+				materialFolderOptions[ 'texture.offset' ] = material.uniforms.map.value.offset.x;
+				materialFolderOptions[ 'uniforms.shininess' ] = material.uniforms.shininess.value;
+				materialFolderOptions[ 'uniforms.G_BlinnPhong' ] = material.uniforms.G_BlinnPhong.value;
+				materialFolderOptions[ 'defines.USE_MAP' ] = false;
+				materialFolderOptions[ 'defines.USE_ALPHAHASH' ] = false;
+				materialFolderOptions[ 'uniforms.ALPHA_HASH_SCALE' ] = material.uniforms.ALPHA_HASH_SCALE.value;
+				materialFolderOptions[ 'defines.USE_FOG' ] = false;
+				materialFolderOptions[ 'defines.FLAT_SHADED' ] = false;
+				materialFolderOptions[ 'defines.USE_LOGDEPTHBUF' ] = false;
+				materialFolderOptions[ 'defines.USE_LOGDEPTHBUF_EXT' ] = false;
+				materialFolderOptions[ 'defines.USE_CUSTOM_DEPTH' ] = false;
+				materialFolderOptions[ 'defines.DITHERING' ] = false;
+				materialFolderOptions[ 'defines.TONE_MAPPING' ] = false;
+				materialFolderOptions[ 'toneMappingExposure' ] = renderer.toneMappingExposure;
+				materialFolderOptions[ 'defines.PREMULTIPLIED_ALPHA' ] = false;
+
+				materialFolder.add( materialFolderOptions, 'texture.offset', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
+
+					meshes.forEach( ( mesh ) => {
+
+						mesh.material.uniforms.map.value.offset.set( value, 0 );
+						mesh.material.uniforms.map.value.updateMatrix();
+
+					} );
+					isDirty = true;
+
+				} );
+				materialFolder.add( materialFolderOptions, 'uniforms.shininess', 0, 256 ).step( 10 ).onChange( ( value ) => updateUniformValue( 'shininess', value ) );
+				materialFolder.add( materialFolderOptions, 'uniforms.G_BlinnPhong', 0, 2 ).step( 0.1 ).onChange( ( value ) => updateUniformValue( 'G_BlinnPhong', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_MAP' ).onChange( ( value ) => toggleDefines( 'USE_MAP', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_ALPHAHASH' ).onChange( ( value ) => toggleDefines( 'USE_ALPHAHASH', value ) );
+				materialFolder.add( materialFolderOptions, 'uniforms.ALPHA_HASH_SCALE', 0, 1 ).step( 0.01 ).onChange( ( value ) => updateUniformValue( 'ALPHA_HASH_SCALE', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_FOG' ).onChange( ( value ) => toggleDefines( 'USE_FOG', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.FLAT_SHADED' ).onChange( ( value ) => toggleDefines( 'FLAT_SHADED', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_LOGDEPTHBUF' ).onChange( ( value ) => toggleDefines( 'USE_LOGDEPTHBUF', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_LOGDEPTHBUF_EXT' ).onChange( ( value ) => toggleDefines( 'USE_LOGDEPTHBUF_EXT', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_CUSTOM_DEPTH' ).onChange( ( value ) => toggleDefines( 'USE_CUSTOM_DEPTH', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.DITHERING' ).onChange( ( value ) => toggleDefines( 'DITHERING', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.TONE_MAPPING' ).onChange( ( value ) => toggleDefines( 'TONE_MAPPING', value ) );
+				materialFolder.add( materialFolderOptions, 'toneMappingExposure', 0, 10 ).step( 0.1 ).onChange( ( value ) => {
+
+					renderer.toneMappingExposure = value;
+					isDirty = true;
+
+				} );
+				materialFolder.add( materialFolderOptions, 'defines.PREMULTIPLIED_ALPHA' ).onChange( ( value ) => toggleDefines( 'PREMULTIPLIED_ALPHA', value ) );
+
+			}
+
+			function updateUniformValue( name, value ) {
+
+				meshes.forEach( ( mesh ) => mesh.material.uniforms[ name ].value = value );
+				isDirty = true;
+
+			}
+
+			function toggleDefines( name, value ) {
+
+				meshes.forEach( ( mesh ) => {
+
+					value ? ( mesh.material.defines[ name ] = '' ) : delete mesh.material.defines[ name ];
+					mesh.material.needsUpdate = true;
+
+				} );
+
+				isDirty = true;
+
+			}
 
 		}
 
@@ -326,11 +2290,11 @@ void main() {
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
 			isDirty = true;
-		
+
 		}
 
 		function render() {
-		
+
 			requestAnimationFrame( render );
 
 			const now = performance.now();
@@ -338,7 +2302,7 @@ void main() {
 			lastTime = now;
 
 			stats.begin();
-		
+
 			if ( isDirty ) {
 
 				isDirty = false;

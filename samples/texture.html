@@ -54,7 +54,7 @@
 		let pickRenderTarget;
 		const textures = [];
 		let isDirty = true;
-		let requestRenderMode = false;
+		let requestRenderMode = true;
 		let lastTime = performance.now();
 
 		const width = window.innerWidth;
@@ -68,7 +68,7 @@
 			initViewer();
 			initObjects();
 			initGUI();
-		
+
 		}
 
 		function initViewer() {
@@ -149,7 +149,7 @@
 			const texture3 = new VideoTexture( video );
 			texture3.colorSpace = SRGBColorSpace;
 			textures.push( texture3 );
-		
+
 			const mesh3 = new Mesh( geometry, new MeshBasicMaterial( { map: texture3 } ) );
 			mesh3.matrixAutoUpdate = false;
 			// mesh3.position.x = 2;
@@ -180,12 +180,12 @@
 
 					renderer.domElement.addEventListener( 'mousedown', onMouseDown );
 					renderer.domElement.style.cursor = 'pointer';
-		
+
 				} else {
 
 					renderer.domElement.removeEventListener( 'mousedown', onMouseDown );
 					renderer.domElement.style.cursor = 'default';
-		
+
 				}
 
 			} );
@@ -203,7 +203,7 @@
 					texture.dispose();
 					// texture.image = null;
 					isDirty = true;
-		
+
 				},
 			};
 			textureFolder.add( textureFolder_options, 'mipmaps' ).onChange( ( value ) => {
@@ -211,14 +211,14 @@
 				texture.generateMipmaps = value;
 				texture.needsUpdate = true;
 				isDirty = true;
-		
+
 			} );
 			textureFolder.add( textureFolder_options, 'anisotropy' ).onChange( ( value ) => {
 
 				texture.anisotropy = value;
 				texture.needsUpdate = true;
 				isDirty = true;
-		
+
 			} );
 			textureFolder.add( textureFolder_options, 'colorSpace', { 'default': NoColorSpace, 'srgb': SRGBColorSpace, 'srgb-linear': LinearSRGBColorSpace } )
 				.onChange( ( value ) => {
@@ -226,7 +226,7 @@
 					texture.colorSpace = value;
 					texture.needsUpdate = true;
 					isDirty = true;
-		
+
 				} );
 			textureFolder.add( textureFolder_options, 'dispose' );
 
@@ -247,7 +247,7 @@
 			// const dpr = renderer.getPixelRatio();
 			// pickRenderTarget.setSize( window.innerWidth * dpr, window.innerHeight * dpr );
 			isDirty = true;
-		
+
 		}
 
 		function onMouseDown( event ) {
@@ -262,11 +262,11 @@
 				pickRenderTarget
 			} );
 			console.log( pickIdColor );
-		
+
 		}
 
 		function render() {
-		
+
 			requestAnimationFrame( render );
 
 			const now = performance.now();
@@ -274,7 +274,7 @@
 			lastTime = now;
 
 			stats.begin();
-		
+
 			if ( isDirty || ! requestRenderMode ) {
 
 				isDirty = false;
