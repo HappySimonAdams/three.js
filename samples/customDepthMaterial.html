@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>customDepthMaterial sample</title>
+	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../src/Three.js",
+				"three/addons/": "../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			// OrthographicCamera,
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			// PlaneGeometry,
+			// BoxGeometry,
+			// SphereGeometry,
+			TorusKnotGeometry,
+			// MeshDepthMaterial,
+			RawShaderMaterial,
+			Mesh,
+			// TextureLoader,
+			// SRGBColorSpace,
+			// RepeatWrapping,
+			GLSL3,
+			// Matrix3,
+			// Color,
+			// Fog,
+			// CustomBlending,
+			// AdditiveBlending,
+			// BackSide,
+			// UniformsUtils,
+			BasicDepthPacking,
+			RGBADepthPacking,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+
+		let renderer, scene, camera, controls, stats;
+		let material;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		// NOTE: 场景尺寸过大时，深度可视化效果不明显（全是黑的）
+		const SCALAR = 1;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 1, 100 * SCALAR );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 1, 10 * SCALAR );
+			camera.position.set( 0, 3 * SCALAR, 6 * SCALAR );
+
+			scene = new Scene();
+
+			// scene.fog = new Fog( 0x999999, 6 * SCALAR, 15 * SCALAR );
+
+			const axes = new AxesHelper( 10 * SCALAR );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+			// controls.update();
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
+			// const geometry = new BoxGeometry( 2, 2, 2 );
+
+			// material = new MeshDepthMaterial();
+			// material.transparent = true;
+			// material.depthPacking = RGBADepthPacking;
+
+			const uniforms = {
+				opacity: { value: 1 },
+			};
+			const defines = {
+				DEPTH_PACKING: BasicDepthPacking
+			};
+			const vertexShader = `
+// 兼容webgl1的写法
+#define attribute in
+#define varying out
+#define texture2D texture
+
+precision highp float;
+precision highp int;
+
+// NOTE: 内部设置, 内部上传 (p_uniforms)
+uniform mat4 modelMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat3 normalMatrix; // NOTE: 该矩阵是视空间下的法线矩阵
+uniform vec3 cameraPosition;
+uniform bool isOrthographic;
+
+// #ifdef USE_INSTANCING
+// 	attribute mat4 instanceMatrix;
+// #endif
+// #ifdef USE_INSTANCING_COLOR
+// 	attribute vec3 instanceColor;
+// #endif
+attribute vec3 position;
+// attribute vec3 normal;
+// attribute vec2 uv;
+// #ifdef USE_UV1
+// 	attribute vec2 uv1;
+// #endif
+// #ifdef USE_UV2
+// 	attribute vec2 uv2;
+// #endif
+// #ifdef USE_UV3
+// 	attribute vec2 uv3;
+// #endif
+// #ifdef USE_TANGENT
+// 	attribute vec4 tangent;
+// #endif
+#if defined( USE_COLOR_ALPHA )
+	attribute vec4 color;
+#elif defined( USE_COLOR )
+	attribute vec3 color;
+#endif
+
+/* <common> */
+
+#define EPSILON 1e-6
+
+bool isPerspectiveMatrix( mat4 m ) {
+	return m[ 2 ][ 3 ] == - 1.0;
+}
+
+/* <logdepthbuf_pars_vertex> */
+
+// NOTE: USE_LOGDEPTHBUF => WebGLRenderer({ logarithmicDepthBuffer: true })
+#ifdef USE_LOGDEPTHBUF
+	varying float vFragDepth;
+	varying float vIsPerspective;
+#endif
+
+/*  */
+
+// This is used for computing an equivalent of gl_FragCoord.z that is as high precision as possible.
+// Some platforms compute gl_FragCoord at a lower precision which makes the manually computed value better for
+// depth-based postprocessing effects. Reproduced on iPad with A10 processor / iPadOS 13.3.1.
+varying vec2 vHighPrecisionZW;
+
+void main() {
+	/* <uv_vertex> */
+
+	/* <begin_vertex> */
+
+	vec3 transformed = vec3( position );
+
+	/* <project_vertex> */
+
+	vec4 mvPosition = vec4( transformed, 1.0 );
+	#ifdef USE_INSTANCING
+		mvPosition = instanceMatrix * mvPosition;
+	#endif
+	mvPosition = modelViewMatrix * mvPosition;
+	gl_Position = projectionMatrix * mvPosition;
+
+	/* <logdepthbuf_vertex> */
+
+	#ifdef USE_LOGDEPTHBUF
+		vFragDepth = 1.0 + gl_Position.w;
+		vIsPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
+	#endif
+
+	/*  */
+
+	vHighPrecisionZW = gl_Position.zw;
+}
+
+			`;
+			const fragmentShader = `
+#define varying in
+#define texture2D texture
+layout(location = 0) out highp vec4 fragColor;
+#define gl_FragColor fragColor
+#define gl_FragDepthEXT gl_FragDepth
+
+precision highp float;
+precision highp int;
+
+// NOTE: 内部设置, 内部上传 (p_uniforms)
+uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;
+uniform bool isOrthographic;
+
+/*  */
+
+// NOTE: 3200 => BasicDepthPacking
+#if DEPTH_PACKING == 3200
+	uniform float opacity;
+#endif
+
+/* <common> */
+
+#define EPSILON 1e-6
+
+/* <packing> */
+
+@see https://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
+
+const float PackUpscale = 256. / 255.; // fraction -> 0..1 (including 1)
+const float UnpackDownscale = 255. / 256.; // 0..1 -> fraction (excluding 1)
+
+const vec3 PackFactors = vec3( 256. * 256. * 256., 256. * 256., 256. );
+const vec4 UnpackFactors = UnpackDownscale / vec4( PackFactors, 1. );
+
+const float ShiftRight8 = 1. / 256.;
+
+vec4 packDepthToRGBA( const in float v ) {
+	vec4 r = vec4( fract( v * PackFactors ), v );
+	r.yzw -= r.xyz * ShiftRight8; // tidy overflow
+	return r * PackUpscale;
+
+	// vec4 r = vec4( fract( vec3( 16581375.0, 65025.0, 255.0 ) * v ), v );
+	// r.yzw -= r.xyz * 1.0 / 255.0;
+	// return r;
+}
+
+float unpackRGBAToDepth( const in vec4 v ) {
+	return dot( v, UnpackFactors );
+
+	// return dot( v, vec4( 1.0 / 16581375.0, 1.0 / 65025.0, 1.0 / 255.0, 1.0 ) );
+}
+
+vec2 packDepthToRG( in highp float v ) {
+	return packDepthToRGBA( v ).yx;
+}
+
+float unpackRGToDepth( const in highp vec2 v ) {
+	return unpackRGBAToDepth( vec4( v.xy, 0.0, 0.0 ) );
+}
+
+/* <logdepthbuf_pars_fragment> */
+
+#if defined( USE_LOGDEPTHBUF )
+	// NOTE: 内部设置, 内部上传 (p_uniforms)
+	uniform float logDepthBufFC;
+	varying float vFragDepth;
+	varying float vIsPerspective;
+#endif
+
+/*  */
+
+varying vec2 vHighPrecisionZW;
+
+void main() {
+	/* <logdepthbuf_fragment> */
+
+	#if defined( USE_LOGDEPTHBUF )
+		// Doing a strict comparison with == 1.0 can cause noise artifacts on some platforms. See issue #17623.
+		gl_FragDepthEXT = vIsPerspective == 0.0 ? gl_FragCoord.z : log2( vFragDepth ) * logDepthBufFC * 0.5;
+	#endif
+
+	/*  */
+
+	// Higher precision equivalent of gl_FragCoord.z. This assumes depthRange has been left to its default values.
+	float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+
+	#if DEPTH_PACKING == 3200
+		gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );
+	#elif DEPTH_PACKING == 3201
+		gl_FragColor = packDepthToRGBA( fragCoordZ );
+	#endif
+}
+
+			`;
+			material = new RawShaderMaterial( { glslVersion: GLSL3, uniforms, defines, vertexShader, fragmentShader } );
+			material.transparent = true; // NOTE: 用于内部判断。如果为false, 则会关闭blend
+
+			const mesh = new Mesh( geometry, material );
+			mesh.name = 'mesh';
+			mesh.matrixAutoUpdate = false;
+			mesh.scale.setScalar( SCALAR );
+			mesh.updateMatrix();
+			mesh.updateMatrixWorld();
+			scene.add( mesh );
+
+			// debug 对数深度
+
+			const mesh2 = new Mesh( geometry, material );
+			mesh2.name = 'mesh2';
+			mesh2.matrixAutoUpdate = false;
+			// NOTE: x, y 方向移动 1，用于对数深度调试
+			mesh2.position.set( 1, 1, - 1 * SCALAR );
+			mesh2.scale.setScalar( SCALAR );
+			mesh2.updateMatrix();
+			mesh2.updateMatrixWorld();
+			// scene.add( mesh2 );
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const materialFolder = gui.addFolder( 'Material' );
+			const materialFolderOptions = {
+				'opacity': material.isMeshDepthMaterial ? material.opacity : material.uniforms.opacity.value
+			};
+			materialFolder.add( materialFolderOptions, 'opacity', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
+
+				material.isMeshDepthMaterial ? material.opacity = value : material.uniforms.opacity.value = value;
+				isDirty = true;
+
+			} );
+			if ( material.isMeshDepthMaterial ) {
+
+				materialFolderOptions[ 'logarithmicDepthBuffer' ] = renderer.capabilities.logarithmicDepthBuffer;
+				materialFolder.add( materialFolderOptions, 'logarithmicDepthBuffer' ).onChange( ( value ) => {
+
+					renderer.capabilities.logarithmicDepthBuffer = value;
+					// NOTE: 需要更新material
+					material.needsUpdate = true;
+					isDirty = true;
+
+				} );
+
+			} else if ( material.isRawShaderMaterial ) {
+
+				materialFolderOptions[ 'defines.USE_LOGDEPTHBUF' ] = false;
+				materialFolderOptions[ 'defines.DEPTH_PACKING' ] = material.defines[ 'DEPTH_PACKING' ];
+
+				materialFolder.add( materialFolderOptions, 'defines.USE_LOGDEPTHBUF' ).onChange( ( value ) => toggleDefines( 'USE_LOGDEPTHBUF', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.DEPTH_PACKING', { 'base': BasicDepthPacking, 'rgba': RGBADepthPacking } ).onChange( ( value ) => {
+
+					material.defines[ 'DEPTH_PACKING' ] = value;
+					material.needsUpdate = true;
+					isDirty = true;
+
+				} );
+
+			}
+
+			function toggleDefines( name, value ) {
+
+				value ? ( material.defines[ name ] = '' ) : delete material.defines[ name ];
+				material.needsUpdate = true;
+				isDirty = true;
+
+			}
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			// camera.left = - w / 2;
+			// camera.right = w / 2;
+			// camera.top = h / 2;
+			// camera.bottom = - h / 2;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		function render() {
+
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>
