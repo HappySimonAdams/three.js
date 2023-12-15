@@ -837,8 +837,15 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 	const vertexGlsl = versionString + prefixVertex + vertexShader;
 	const fragmentGlsl = versionString + prefixFragment + fragmentShader;
 
-	// console.log( '*VERTEX*', vertexGlsl );
-	// console.log( '*FRAGMENT*', fragmentGlsl );
+	// ShaderMaterial or RawShaderMaterial
+	if ( parameters.shaderID === undefined ) {
+
+		// if ( parameters.shaderID === 'phong' ) {
+
+		// 	console.log( '*VERTEX*', vertexGlsl );
+		console.log( '*FRAGMENT*', fragmentGlsl );
+
+	}
 
 	const glVertexShader = WebGLShader( gl, gl.VERTEX_SHADER, vertexGlsl );
 	const glFragmentShader = WebGLShader( gl, gl.FRAGMENT_SHADER, fragmentGlsl );

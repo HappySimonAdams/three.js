@@ -22,6 +22,7 @@
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
+			WebGLRenderTarget,
 			AxesHelper,
 			PlaneGeometry,
 			TorusKnotGeometry,
@@ -55,12 +56,15 @@
 			DoubleSide,
 			CameraHelper,
 			UniformsUtils,
+			NearestFilter,
+			CubeTextureLoader,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
+		let cubeTexture;
 		let ambientLight, directionLight, pointLight, spotLight, hemiLight;
 		const meshes = [];
 		let plane;
@@ -78,6 +82,7 @@
 		function init() {
 
 			initViewer();
+			initLights();
 			initObjects();
 			initGUI();
 
@@ -90,11 +95,14 @@
 			camera.position.set( 0, 3 * SCALAR, 6 * SCALAR );
 
 			scene = new Scene();
+			// NOTE: 设置为 false 后，helper 显示异常
 			// scene.matrixAutoUpdate = false;
-			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
 			// scene.matrixWorldAutoUpdate = false;
 
 			scene.fog = new Fog( 0x999999, 6 * SCALAR, 15 * SCALAR );
+
+			cubeTexture = new CubeTextureLoader().setPath( '../examples/textures/cube/Bridge2/' ).load( [ 'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg' ], () => isDirty = true );
+			scene.background = cubeTexture;
 
 			const axes = new AxesHelper( 10 * SCALAR );
 			axes.matrixAutoUpdate = false;
@@ -121,49 +129,64 @@
 
 		}
 
-		function initObjects() {
+		function initLights() {
 
 			ambientLight = new AmbientLight( 0x404040 );
 			scene.add( ambientLight );
 
 			directionLight = new DirectionalLight( 0xffffff, 3 );
+			directionLight.name = 'directionLight';
 			directionLight.matrixAutoUpdate = false;
 			directionLight.position.set( 2 * SCALAR, 2 * SCALAR, 2 * SCALAR );
 			directionLight.updateMatrix();
 			directionLight.updateMatrixWorld();
-			directionLight.castShadow = true;
+			// directionLight.castShadow = true;
 			directionLight.shadow.camera.left = - 5 * SCALAR;
 			directionLight.shadow.camera.right = 5 * SCALAR;
 			directionLight.shadow.camera.top = 5 * SCALAR;
 			directionLight.shadow.camera.bottom = - 5 * SCALAR;
 			directionLight.shadow.camera.near = 1;
 			directionLight.shadow.camera.far = 10 * SCALAR;
+			// NOTE: DirectionLightShadow.updateMatrices() 不会更新相机的 projectionMatrix
+			directionLight.shadow.camera.updateProjectionMatrix();
 			// directionLight.shadow.mapSize.set( 1024, 1024 );
+			directionLight.shadow.map = new WebGLRenderTarget( directionLight.shadow.mapSize.x, directionLight.shadow.mapSize.y, { minFilter: NearestFilter, magFilter: NearestFilter } );
+			directionLight.shadow.map.texture.name = 'directionLight.shadowMap';
 			scene.add( directionLight );
 			// scene.add( new DirectionalLightHelper( directionLight, 0.5 * SCALAR ) );
 			// scene.add( new CameraHelper( directionLight.shadow.camera ) );
-			window.directionLight = directionLight;
 
 			// NOTE: 点光源会随距离呈现指数级衰减，此处提升光照强度，并设置decay为1
 			pointLight = new PointLight( 0xffffff, 10 * SCALAR, 0, 1 );
+			pointLight.name = 'pointLight';
 			pointLight.matrixAutoUpdate = false;
 			pointLight.position.set( - 2 * SCALAR, 2 * SCALAR, 0 );
 			pointLight.updateMatrix();
 			pointLight.updateMatrixWorld();
+			// pointLight.castShadow = true;
+			pointLight.shadow.camera.near = 1;
+			pointLight.shadow.camera.far = 10 * SCALAR; // 默认为 light.distance
 			scene.add( pointLight );
 			// scene.add( new PointLightHelper( pointLight, 0.1 * SCALAR ) );
 
 			// NOTE: 聚光灯会随距离呈现指数级衰减，此处提升光照强度，并设置decay为1
-			spotLight = new SpotLight( 0xffffff, 10 * SCALAR, 3 * SCALAR, Math.PI / 5, 0.6, 1 );
+			spotLight = new SpotLight( 0xffffff, 20 * SCALAR, 10 * SCALAR, Math.PI / 5, 0.6, 1 );
+			spotLight.name = 'spotLight';
 			spotLight.matrixAutoUpdate = false;
-			spotLight.position.set( 0, 2 * SCALAR, 0 );
+			spotLight.position.set( 0, 4 * SCALAR, 0 );
 			spotLight.updateMatrix();
 			spotLight.updateMatrixWorld();
+			spotLight.castShadow = true;
+			spotLight.shadow.camera.near = 1;
+			// spotLight.shadow.camera.far = 10 * SCALAR; // 默认为 light.distance
+			spotLight.shadow.map = new WebGLRenderTarget( spotLight.shadow.mapSize.x, spotLight.shadow.mapSize.y, { minFilter: NearestFilter, magFilter: NearestFilter } );
+			spotLight.shadow.map.texture.name = 'spotLight.shadowMap';
 			scene.add( spotLight );
 			// scene.add( new SpotLightHelper( spotLight ) );
 
 			// hemiLight相当于一种环境光
 			hemiLight = new HemisphereLight( 0xffffff, 0xffffff, 2 );
+			hemiLight.name = 'hemiLight';
 			hemiLight.color.setHSL( 0.6, 1, 0.6 );
 			hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
 			hemiLight.matrixAutoUpdate = false;
@@ -173,6 +196,10 @@
 			hemiLight.visible = false;
 			scene.add( hemiLight );
 			// scene.add( new HemisphereLightHelper( hemiLight, 0.5 * SCALAR ) );
+
+		}
+
+		function initObjects() {
 
 			// const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
 			const geometry = new BoxGeometry( 2, 2, 2 );
@@ -198,6 +225,10 @@
 				specular: { value: new Color( 0x111111 ) },
 				shininess: { value: 30 },
 				opacity: { value: 1 },
+				envMap: { value: null },
+				flipEnvMap: { value: - 1 },
+				reflectivity: { value: 1 },
+				refractionRatio: { value: 0.98 },
 				fogDensity: { value: 0.00025 },
 				fogNear: { value: 1 },
 				fogFar: { value: 2000 },
@@ -270,11 +301,17 @@
 				G_BlinnPhong: { value: 0.25 },
 				ALPHA_HASH_SCALE: { value: 0.05 },
 			};
+			const defines = {
+				'ENVMAP_MODE_REFLECTION': '',
+				'ENVMAP_TYPE_CUBE': '',
+				'ENVMAP_BLENDING_MULTIPLY': '',
+			};
 			const vertexShader = `
 // 兼容webgl1的写法
 #define attribute in
 #define varying out
 #define texture2D texture
+#define PHONG
 
 precision highp float;
 precision highp int;
@@ -321,6 +358,18 @@ bool isPerspectiveMatrix( mat4 m ) {
 	return m[ 2 ][ 3 ] == - 1.0;
 }
 
+// NOTE: 矩阵作用于向量, 表示将向量转换到新的坐标空间
+vec3 transformDirection( in vec3 dir, in mat4 matrix ) {
+	return normalize( ( matrix * vec4( dir, 0.0 ) ).xyz );
+}
+
+// NOTE: 向量作用于矩阵, 表示将向量逆变换到新的坐标空间
+vec3 inverseTransformDirection( in vec3 dir, in mat4 matrix ) {
+	// dir can be either a direction vector or a normal vector
+	// upper-left 3x3 of matrix is assumed to be orthogonal
+	return normalize( ( vec4( dir, 0.0 ) * matrix ).xyz );
+}
+
 /* <uv_pars_vertex> */
 
 // NOTE: USE_UV => 外部拓展中用到
@@ -333,6 +382,21 @@ bool isPerspectiveMatrix( mat4 m ) {
 	// NOTE: 外部设置, 外部上传
 	uniform mat3 mapTransform; // MeshPhongMaterial.map.matrix
 	varying vec2 vMapUv;
+#endif
+
+/* <envmap_pars_vertex> */
+// NOTE: USE_ENVMAP => MeshPhongMaterial.envMap
+#ifdef USE_ENVMAP
+	#if defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( PHONG ) || defined( LAMBERT )
+		#define ENV_WORLDPOS
+	#endif
+
+	#ifdef ENV_WORLDPOS
+		varying vec3 vWorldPosition;
+	#else
+		varying vec3 vReflect;
+		uniform float refractionRatio;
+	#endif
 #endif
 
 /* <color_pars_vertex> */
@@ -579,11 +643,35 @@ void main() {
 		worldPosition = modelMatrix * worldPosition;
 	#endif
 
+	/* <envmap_vertex> */
+
+	#ifdef USE_ENVMAP
+		#ifdef ENV_WORLDPOS
+			vWorldPosition = worldPosition.xyz;
+		#else
+			vec3 cameraToVertex;
+			if ( isOrthographic ) {
+				cameraToVertex = normalize( vec3( - viewMatrix[ 0 ][ 2 ], - viewMatrix[ 1 ][ 2 ], - viewMatrix[ 2 ][ 2 ] ) );
+			} else {
+				cameraToVertex = normalize( worldPosition.xyz - cameraPosition );
+			}
+			// NOTE: 将法线从视空间转换到模型空间(世界坐标)
+			vec3 worldNormal = inverseTransformDirection( transformedNormal, viewMatrix );
+			// NOTE: ENVMAP_MODE_REFLECTION 为默认值
+			// NOTE: ENVMAP_MODE_REFRACTION => Texture.mapping = CubeRefractionMapping
+			#ifdef ENVMAP_MODE_REFLECTION
+				vReflect = reflect( cameraToVertex, worldNormal );
+			#else
+				vReflect = refract( cameraToVertex, worldNormal, refractionRatio );
+			#endif
+		#endif
+	#endif
+
 	/* <shadowmap_vertex> */
 
 	#if ( defined( USE_SHADOWMAP ) && ( NUM_DIR_LIGHT_SHADOWS > 0 || NUM_POINT_LIGHT_SHADOWS > 0 ) ) || ( NUM_SPOT_LIGHT_COORDS > 0 )
 		// Offsetting the position used for querying occlusion along the world normal can be used to reduce shadow acne.
-		// NOTE: 将法线从视空间转换到模型空间
+		// NOTE: 将法线从视空间转换到模型空间(世界坐标)
 		vec3 shadowWorldNormal = inverseTransformDirection( transformedNormal, viewMatrix );
 		vec4 shadowWorldPosition;
 	#endif
@@ -637,9 +725,11 @@ void main() {
 			const fragmentShader = `
 #define varying in
 #define texture2D texture
+#define textureCube texture
 layout(location = 0) out highp vec4 fragColor;
 #define gl_FragColor fragColor
 #define gl_FragDepthEXT gl_FragDepth
+#define PHONG
 
 precision highp float;
 precision highp int;
@@ -873,6 +963,38 @@ vec2 unpackRGBATo2Half( vec4 v ) {
 		// Avoids ατ == 0. Could also do ατ =1-ατ
 		return clamp( threshold , 1.0e-6, 1.0 );
 	}
+#endif
+
+/* <envmap_common_pars_fragment> */
+
+#ifdef USE_ENVMAP
+	// uniform float envMapIntensity; // MeshPhysicalMaterial
+	uniform float flipEnvMap;
+
+	// NOTE: ENVMAP_TYPE_CUBE 为默认值
+	// NOTE: ENVMAP_TYPE_CUBE_UV => Texture.mapping = CubeUVReflectionMapping
+	#ifdef ENVMAP_TYPE_CUBE
+		uniform samplerCube envMap;
+	#else
+		uniform sampler2D envMap;
+	#endif
+#endif
+
+/* <envmap_pars_fragment> */
+
+#ifdef USE_ENVMAP
+	uniform float reflectivity;
+
+	#if defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( PHONG ) || defined( LAMBERT )
+		#define ENV_WORLDPOS
+	#endif
+
+	#ifdef ENV_WORLDPOS
+		varying vec3 vWorldPosition;
+		uniform float refractionRatio;
+	#else
+		varying vec3 vReflect;
+	#endif
 #endif
 
 /* <fog_pars_fragment> */
@@ -1754,9 +1876,12 @@ void main() {
 			getSpotLightInfo( spotLight, geometry, directLight );
 
 			// spot lights are ordered [shadows with maps, shadows without maps, maps without shadows, none]
+			// NOTE: NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS => 既投射了阴影也定义了调制map的聚光灯数量
 			#if ( UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS )
 				#define SPOT_LIGHT_MAP_INDEX UNROLLED_LOOP_INDEX
+			// NOTE: NUM_SPOT_LIGHT_SHADOWS => 投射阴影的聚光灯数量(light.shadow.map)
 			#elif ( UNROLLED_LOOP_INDEX < NUM_SPOT_LIGHT_SHADOWS )
+				// NOTE: NUM_SPOT_LIGHT_MAPS => 定义了调制map的聚光灯数量(light.map)
 				#define SPOT_LIGHT_MAP_INDEX NUM_SPOT_LIGHT_MAPS
 			#else
 				#define SPOT_LIGHT_MAP_INDEX ( UNROLLED_LOOP_INDEX - NUM_SPOT_LIGHT_SHADOWS + NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS )
@@ -1826,9 +1951,9 @@ void main() {
 			irradiance += lightMapIrradiance;
 		#endif
 
-		#if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-			iblIrradiance += getIBLIrradiance( geometry.normal );
-		#endif
+		// #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
+		// 	iblIrradiance += getIBLIrradiance( geometry.normal );
+		// #endif
 	#endif
 
 	// #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
@@ -1856,6 +1981,44 @@ void main() {
 	/*  */
 
 	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
+
+	/* <envmap_fragment> */
+
+	#ifdef USE_ENVMAP
+		#ifdef ENV_WORLDPOS
+			vec3 cameraToFrag;
+			if ( isOrthographic ) {
+				cameraToFrag = normalize( vec3( - viewMatrix[ 0 ][ 2 ], - viewMatrix[ 1 ][ 2 ], - viewMatrix[ 2 ][ 2 ] ) );
+			} else {
+				cameraToFrag = normalize( vWorldPosition - cameraPosition );
+			}
+			vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
+			#ifdef ENVMAP_MODE_REFLECTION
+				vec3 reflectVec = reflect( cameraToFrag, worldNormal );
+			#else
+				vec3 reflectVec = refract( cameraToFrag, worldNormal, refractionRatio );
+			#endif
+		#else
+			vec3 reflectVec = vReflect;
+		#endif
+
+		#ifdef ENVMAP_TYPE_CUBE
+			vec4 envColor = textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) );
+		#else
+			vec4 envColor = vec4( 0.0 );
+		#endif
+
+		// NOTE: ENVMAP_BLENDING_MULTIPLY => material.combine = MultiplyOperation (默认值)
+		#ifdef ENVMAP_BLENDING_MULTIPLY
+			outgoingLight = mix( outgoingLight, outgoingLight * envColor.xyz, specularStrength * reflectivity );
+		// NOTE: ENVMAP_BLENDING_MIX => material.combine = MixOperation
+		#elif defined( ENVMAP_BLENDING_MIX )
+			outgoingLight = mix( outgoingLight, envColor.xyz, specularStrength * reflectivity );
+		// NOTE: ENVMAP_BLENDING_ADD => material.combine = AddOperation
+		#elif defined( ENVMAP_BLENDING_ADD )
+			outgoingLight += envColor.xyz * specularStrength * reflectivity;
+		#endif
+	#endif
 
 	/* <opaque_fragment> */
 
@@ -1911,21 +2074,26 @@ void main() {
 	#endif
 }
 			`;
-			const customMaterial = new RawShaderMaterial( { glslVersion: GLSL3, uniforms, vertexShader, fragmentShader } );
-			// NOTE: WebGLPrograms.getProgramCacheKey() 排除了对 RawShaderMaterial 参数的检查
-			// 因此, 需要手动设置 customProgramCacheKey
-			customMaterial.customProgramCacheKey = function () {
+			const customMaterial = new RawShaderMaterial( { glslVersion: GLSL3, uniforms, defines, vertexShader, fragmentShader } );
 
-				// 以下是需要重新编译program的参数
+			function customProgramCacheKey() {
+
 				const array = [];
 				array.push( directionLight.visible );
 				array.push( pointLight.visible );
 				array.push( spotLight.visible );
 				array.push( hemiLight.visible );
+				// NOTE: 目前发现只有 spotLight.castShadow 变化时需要重新编译 shader
+				// array.push( directionLight.castShadow );
+				// array.push( pointLight.castShadow );
+				array.push( spotLight.castShadow );
 				return array.join();
 
-			};
+			}
 
+			// NOTE: WebGLPrograms.getProgramCacheKey() 排除了对 RawShaderMaterial 参数的检查
+			// 因此, 需要手动设置 customProgramCacheKey
+			customMaterial.customProgramCacheKey = customProgramCacheKey;
 			// customMaterial.premultipliedAlpha = true;
 			customMaterial.transparent = true; // NOTE: 用于内部判断。如果为false, 则会关闭blend
 			customMaterial.fog = true; // NOTE: 用于内部判断
@@ -1937,6 +2105,7 @@ void main() {
 			customMaterial.uniforms.map.value = texture;
 			texture.updateMatrix(); // NOTE: 需要更新纹理的矩阵
 			customMaterial.uniforms.mapTransform.value = texture.matrix;
+			customMaterial.uniforms.envMap.value = cubeTexture;
 
 			// const mesh = new Mesh( geometry, material );
 			const mesh = new Mesh( geometry, customMaterial );
@@ -1950,7 +2119,7 @@ void main() {
 			scene.add( mesh );
 			meshes.push( mesh );
 
-			// debug 对数深度
+			/* debug 对数深度 */
 
 			const material2 = new MeshPhongMaterial( { color: 0x006666 } );
 			material2.transparent = true;
@@ -1958,18 +2127,8 @@ void main() {
 			material2.fog = false;
 
 			// NOTE: clone uniforms
-			const customMaterial2 = new RawShaderMaterial( { glslVersion: GLSL3, uniforms: UniformsUtils.clone( uniforms ), vertexShader, fragmentShader } );
-			customMaterial2.customProgramCacheKey = function () {
-
-				const array = [];
-				array.push( directionLight.visible );
-				array.push( pointLight.visible );
-				array.push( spotLight.visible );
-				array.push( hemiLight.visible );
-				return array.join();
-
-			};
-
+			const customMaterial2 = new RawShaderMaterial( { glslVersion: GLSL3, uniforms: UniformsUtils.clone( uniforms ), defines, vertexShader, fragmentShader } );
+			customMaterial2.customProgramCacheKey = customProgramCacheKey;
 			customMaterial2.transparent = true;
 			customMaterial2.fog = true;
 			customMaterial2.lights = true;
@@ -1978,6 +2137,7 @@ void main() {
 			customMaterial.uniforms.map.value = texture;
 			texture.updateMatrix();
 			customMaterial2.uniforms.mapTransform.value = texture.matrix;
+			customMaterial2.uniforms.envMap.value = cubeTexture;
 
 			// const mesh2 = new Mesh( geometry, material2 );
 			const mesh2 = new Mesh( geometry, customMaterial2 );
@@ -1993,9 +2153,9 @@ void main() {
 			scene.add( mesh2 );
 			meshes.push( mesh2 );
 
-			// debug 阴影
+			/* debug 阴影 */
 
-			plane = new Mesh( new PlaneGeometry( 4, 4 ), new MeshPhongMaterial( { color: 0xaaaaaa, fog: false, dithering: true } ) );
+			plane = new Mesh( new PlaneGeometry( 6, 6 ), new MeshPhongMaterial( { color: 0xaaaaaa, fog: false, dithering: true } ) );
 			plane.name = 'plane';
 			plane.receiveShadow = true;
 			plane.matrixAutoUpdate = false;
@@ -2026,6 +2186,7 @@ void main() {
 				'point.intensity': pointLight.intensity,
 				'spot.visible': spotLight.visible,
 				'spot.intensity': spotLight.intensity,
+				'spot.distance': spotLight.distance,
 				'hemi.visible': hemiLight.visible,
 				'hemi.intensity': hemiLight.intensity,
 			};
@@ -2084,6 +2245,12 @@ void main() {
 				isDirty = true;
 
 			} );
+			lightsFolder.add( lightsFolderOptions, 'spot.distance', 1 * SCALAR, 10 * SCALAR ).step( 1 * SCALAR ).onChange( ( value ) => {
+
+				spotLight.distance = value;
+				isDirty = true;
+
+			} );
 			lightsFolder.add( lightsFolderOptions, 'hemi.visible' ).onChange( ( value ) => {
 
 				hemiLight.visible = value;
@@ -2100,23 +2267,43 @@ void main() {
 			// ================================== shadow gui =======================================
 
 			const shadowsFolder = gui.addFolder( 'shadows' );
+			shadowsFolder.close();
 			const shadowsFolderOptions = {
-				'viewShadowMap': false,
 				'shadowType': renderer.shadowMap.type,
+				'shadowMapUpdate': () => {
+
+					renderer.shadowMap.needsUpdate = true,
+					isDirty = true;
+
+				},
+				'viewShadowMap': false,
+				'directionLight.castShadow': directionLight.castShadow,
 				'directionShadow.bias': directionLight.shadow.bias,
 				'directionShadow.normalBias': directionLight.shadow.normalBias,
 				'directionShadow.radius': directionLight.shadow.radius,
+				'pointLight.castShadow': pointLight.castShadow,
+				'spotLight.castShadow': spotLight.castShadow,
 			};
+			shadowsFolder.add( shadowsFolderOptions, 'shadowType', { 'basic': BasicShadowMap, 'PCF': PCFShadowMap, 'PCFSoft': PCFSoftShadowMap, 'VSM': VSMShadowMap } ).onChange( ( value ) => {
+
+				renderer.shadowMap.type = value;
+				// NOTE: 接收阴影的对象需要更新material
+				plane.material.needsUpdate = true;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'shadowMapUpdate' );
 			let shadowPlane;
 			shadowsFolder.add( shadowsFolderOptions, 'viewShadowMap' ).onChange( ( value ) => {
 
-				if ( ! directionLight.shadow.map ) return;
+				const depthRenderTarget = directionLight.castShadow ? directionLight.shadow.map : pointLight.castShadow ? pointLight.shadow.map : spotLight.shadow.map;
+				if ( ! depthRenderTarget ) return;
 
 				if ( value ) {
 
 					const material = new ShaderMaterial( {
 						uniforms: {
-							depthMap: { value: directionLight.shadow.map.texture }
+							depthMap: { value: depthRenderTarget.texture }
 						},
 						vertexShader: `
 							varying vec2 vUv;
@@ -2159,11 +2346,9 @@ void main() {
 				isDirty = true;
 
 			} );
-			shadowsFolder.add( shadowsFolderOptions, 'shadowType', { 'basic': BasicShadowMap, 'PCF': PCFShadowMap, 'PCFSoft': PCFSoftShadowMap, 'VSM': VSMShadowMap } ).onChange( ( value ) => {
+			shadowsFolder.add( shadowsFolderOptions, 'directionLight.castShadow' ).onChange( ( value ) => {
 
-				renderer.shadowMap.type = value;
-				// NOTE: 接收阴影的对象需要更新material
-				plane.material.needsUpdate = true;
+				directionLight.castShadow = value;
 				isDirty = true;
 
 			} );
@@ -2184,6 +2369,18 @@ void main() {
 				// NOTE: radius只对PCFShadowMap有用
 				if ( renderer.shadowMap.type !== PCFShadowMap ) return;
 				directionLight.shadow.radius = value;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'pointLight.castShadow' ).onChange( ( value ) => {
+
+				pointLight.castShadow = value;
+				isDirty = true;
+
+			} );
+			shadowsFolder.add( shadowsFolderOptions, 'spotLight.castShadow' ).onChange( ( value ) => {
+
+				spotLight.castShadow = value;
 				isDirty = true;
 
 			} );
@@ -2211,6 +2408,18 @@ void main() {
 				materialFolderOptions[ 'uniforms.shininess' ] = material.uniforms.shininess.value;
 				materialFolderOptions[ 'uniforms.G_BlinnPhong' ] = material.uniforms.G_BlinnPhong.value;
 				materialFolderOptions[ 'defines.USE_MAP' ] = false;
+				materialFolderOptions[ 'defines.USE_ENVMAP' ] = false;
+				materialFolderOptions[ 'uniforms.flipEnvMap' ] = material.uniforms.flipEnvMap.value;
+				materialFolderOptions[ 'uniforms.reflectivity' ] = material.uniforms.reflectivity.value;
+
+				const envMapModeOptions = { reflection: 'ENVMAP_MODE_REFLECTION', refraction: 'ENVMAP_MODE_REFRACTION' };
+				let envMapMode = envMapModeOptions[ 'reflection' ];
+				materialFolderOptions[ 'defines.envMapMode' ] = 'reflection';
+
+				const envMapBlendingModeOptions = { multiply: 'ENVMAP_BLENDING_MULTIPLY', mix: 'ENVMAP_BLENDING_MIX', add: 'ENVMAP_BLENDING_ADD' };
+				let envMapBlendingMode = envMapBlendingModeOptions[ 'multiply' ];
+				materialFolderOptions[ 'defines.envMapBlendingMode' ] = 'multiply';
+
 				materialFolderOptions[ 'defines.USE_ALPHAHASH' ] = false;
 				materialFolderOptions[ 'uniforms.ALPHA_HASH_SCALE' ] = material.uniforms.ALPHA_HASH_SCALE.value;
 				materialFolderOptions[ 'defines.USE_FOG' ] = false;
@@ -2222,6 +2431,8 @@ void main() {
 				materialFolderOptions[ 'defines.TONE_MAPPING' ] = false;
 				materialFolderOptions[ 'toneMappingExposure' ] = renderer.toneMappingExposure;
 				materialFolderOptions[ 'defines.PREMULTIPLIED_ALPHA' ] = false;
+
+				//
 
 				materialFolder.add( materialFolderOptions, 'texture.offset', 0, 1 ).step( 0.1 ).onChange( ( value ) => {
 
@@ -2237,6 +2448,37 @@ void main() {
 				materialFolder.add( materialFolderOptions, 'uniforms.shininess', 0, 256 ).step( 10 ).onChange( ( value ) => updateUniformValue( 'shininess', value ) );
 				materialFolder.add( materialFolderOptions, 'uniforms.G_BlinnPhong', 0, 2 ).step( 0.1 ).onChange( ( value ) => updateUniformValue( 'G_BlinnPhong', value ) );
 				materialFolder.add( materialFolderOptions, 'defines.USE_MAP' ).onChange( ( value ) => toggleDefines( 'USE_MAP', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.USE_ENVMAP' ).onChange( ( value ) => toggleDefines( 'USE_ENVMAP', value ) );
+				materialFolder.add( materialFolderOptions, 'uniforms.flipEnvMap', [ - 1, 1 ] ).onChange( ( value ) => updateUniformValue( 'flipEnvMap', value ) );
+				materialFolder.add( materialFolderOptions, 'uniforms.reflectivity', 0, 1 ).step( 0.1 ).onChange( ( value ) => updateUniformValue( 'reflectivity', value ) );
+				materialFolder.add( materialFolderOptions, 'defines.envMapMode', envMapModeOptions ).onChange( ( value ) => {
+
+					meshes.forEach( ( mesh ) => {
+
+						delete mesh.material.defines[ envMapMode ];
+						mesh.material.defines[ value ] = '';
+						mesh.material.needsUpdate = true;
+
+					} );
+
+					envMapMode = value;
+					isDirty = true;
+
+				} );
+				materialFolder.add( materialFolderOptions, 'defines.envMapBlendingMode', envMapBlendingModeOptions ).onChange( ( value ) => {
+
+					meshes.forEach( ( mesh ) => {
+
+						delete mesh.material.defines[ envMapBlendingMode ];
+						mesh.material.defines[ value ] = '';
+						mesh.material.needsUpdate = true;
+
+					} );
+
+					envMapBlendingMode = value;
+					isDirty = true;
+
+				} );
 				materialFolder.add( materialFolderOptions, 'defines.USE_ALPHAHASH' ).onChange( ( value ) => toggleDefines( 'USE_ALPHAHASH', value ) );
 				materialFolder.add( materialFolderOptions, 'uniforms.ALPHA_HASH_SCALE', 0, 1 ).step( 0.01 ).onChange( ( value ) => updateUniformValue( 'ALPHA_HASH_SCALE', value ) );
 				materialFolder.add( materialFolderOptions, 'defines.USE_FOG' ).onChange( ( value ) => toggleDefines( 'USE_FOG', value ) );

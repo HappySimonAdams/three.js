@@ -13,8 +13,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 	const multisampledRTTExt = extensions.has( 'WEBGL_multisampled_render_to_texture' ) ? extensions.get( 'WEBGL_multisampled_render_to_texture' ) : null;
 	const supportsInvalidateFramebuffer = typeof navigator === 'undefined' ? false : /OculusBrowser/g.test( navigator.userAgent );
 
-	console.log( 'extension(WEBGL_multisampled_render_to_texture): ', multisampledRTTExt );
-	console.log( 'updateMultisampleRenderTarget() supportsInvalidateFramebuffer: ', supportsInvalidateFramebuffer );
+	// NOTE: 目前，仅有 Oculus Browser 支持 WEBGL_multisampled_render_to_texture 扩展
+	console.log( 'extension(WEBGL_multisampled_render_to_texture): ', extensions.has( 'WEBGL_multisampled_render_to_texture' ) );
 
 	const _videoTextures = new WeakMap();
 	let _canvas;
@@ -1402,7 +1402,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			multisampledRTTExt.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, attachment, textureTarget, properties.get( texture ).__webglTexture, 0, getRenderTargetSamples( renderTarget ) );
 
-		} else if ( textureTarget === _gl.TEXTURE_2D || ( textureTarget >= _gl.TEXTURE_CUBE_MAP_POSITIVE_X && textureTarget <= _gl.TEXTURE_CUBE_MAP_NEGATIVE_Z ) ) { // see #24753
+		} else if ( textureTarget === _gl.TEXTURE_2D || ( textureTarget >= _gl.TEXTURE_CUBE_MAP_POSITIVE_X && textureTarget <= _gl.TEXTURE_CUBE_MAP_NEGATIVE_Z ) ) {
 
 			_gl.framebufferTexture2D( _gl.FRAMEBUFFER, attachment, textureTarget, properties.get( texture ).__webglTexture, level );
 
@@ -1411,7 +1411,6 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		state.bindFramebuffer( _gl.FRAMEBUFFER, null );
 
 	}
-
 
 	// Setup storage for internal depth/stencil buffers and bind to correct framebuffer
 	function setupRenderBufferStorage( renderbuffer, renderTarget, isMultisample ) {
@@ -1738,6 +1737,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			}
 
+			// NOTE: useMultisampledRTT( renderTarget ) 总是为false，因为 extensions.has('WEBGL_multisampled_render_to_texture') = false
+			// 目前，仅有 Oculus Browser 支持 WEBGL_multisampled_render_to_texture 扩展
 			if ( ( isWebGL2 && renderTarget.samples > 0 ) && useMultisampledRTT( renderTarget ) === false ) {
 
 				const textures = isMultipleRenderTargets ? texture : [ texture ];
