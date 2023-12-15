@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>MRT sample</title>
+	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../src/Three.js",
+				"three/addons/": "../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			OrthographicCamera,
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			TorusKnotGeometry,
+			SphereGeometry,
+			BoxGeometry,
+			PlaneGeometry,
+			RawShaderMaterial,
+			Mesh,
+			GLSL3,
+			Color,
+			Vector2,
+			Fog,
+			FloatType,
+			NearestFilter,
+			WebGLMultipleRenderTargets,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+		import { readPixelForMRT } from './common/picking.js';
+
+		let renderer, scene, camera, controls, stats;
+		let renderTarget, material;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		const SCALAR = 10000;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 1, 100 * SCALAR );
+			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 1, 10 * SCALAR );
+			camera.position.set( 0, 3 * SCALAR, 6 * SCALAR );
+
+			scene = new Scene();
+
+			scene.fog = new Fog( 0x999999, 6 * SCALAR, 15 * SCALAR );
+
+			const axes = new AxesHelper( 10 * SCALAR );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			renderTarget = new WebGLMultipleRenderTargets( width * window.devicePixelRatio, height * window.devicePixelRatio, 2 );
+			renderTarget.texture[ 0 ].name = 'outColor';
+			renderTarget.texture[ 1 ].name = 'pickColor';
+			for ( let i = 0, il = renderTarget.texture.length; i < il; i ++ ) {
+
+				renderTarget.texture[ i ].minFilter = NearestFilter;
+				renderTarget.texture[ i ].magFilter = NearestFilter;
+				renderTarget.texture[ i ].type = FloatType;
+
+			}
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+			// controls.update();
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			const geometry = new TorusKnotGeometry( 1, 0.3, 200, 32 );
+			// const geometry = new BoxGeometry( 2, 2, 2 );
+
+			const uniforms = {
+				diffuse: { value: new Color( 0xffffff ) },
+				opacity: { value: 1.0 },
+				screenCoord: { value: new Vector2( width, height ) },
+			};
+			const vertexShader = `
+precision highp float;
+precision highp int;
+
+in vec3 position;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+void main() {
+	gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+			`;
+			const fragmentShader = `
+precision highp float;
+precision highp int;
+
+uniform vec3 diffuse;
+uniform float opacity;
+uniform vec2 screenCoord;
+
+layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 pickColor;
+
+void main() {
+	outColor = vec4(diffuse, opacity);
+
+	bool isLeft = gl_FragCoord.x < screenCoord.x / 2.0;
+	pickColor = mix(vec4(1024.0, 0.0, 0.0, 1.0), vec4(2048.0, 0.0, 0.0, 1.0), float(isLeft));
+}
+			`;
+			material = new RawShaderMaterial( { glslVersion: GLSL3, uniforms, vertexShader, fragmentShader } );
+			material.fog = false;
+			material.uniforms.diffuse.value.set( 0x00cccc );
+
+			const mesh = new Mesh( geometry, material );
+			mesh.name = 'mesh';
+			mesh.matrixAutoUpdate = false;
+			mesh.position.x = - 3 * SCALAR;
+			mesh.scale.setScalar( SCALAR );
+			mesh.rotateX( - Math.PI / 2 );
+			mesh.updateMatrix();
+			mesh.updateMatrixWorld();
+			scene.add( mesh );
+
+			const mesh2 = mesh.clone();
+			mesh2.name = 'mesh2';
+			mesh2.position.x = 3 * SCALAR;
+			mesh2.updateMatrix();
+			mesh2.updateMatrixWorld();
+			scene.add( mesh2 );
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const gui_options = {
+				'pick': false,
+			};
+			gui.add( gui_options, 'pick' ).onChange( ( value ) => {
+
+				if ( value ) {
+
+					renderer.domElement.addEventListener( 'mousedown', onMouseDown );
+					renderer.domElement.style.cursor = 'pointer';
+
+				} else {
+
+					renderer.domElement.removeEventListener( 'mousedown', onMouseDown );
+					renderer.domElement.style.cursor = 'default';
+
+				}
+
+			} );
+
+		}
+
+		function onMouseDown( event ) {
+
+			const pixes = readPixelForMRT( {
+				camera,
+				renderer,
+				selectObject: scene,
+				x: event.clientX,
+				y: event.clientY,
+				pickSize: 2,
+				pickRenderTarget: renderTarget,
+				activeTextureIndex: 1,
+			} );
+			console.log( pixes );
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			// camera.left = - w / 2;
+			// camera.right = w / 2;
+			// camera.top = h / 2;
+			// camera.bottom = - h / 2;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		function render() {
+
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>

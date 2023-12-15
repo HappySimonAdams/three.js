@@ -1513,7 +1513,7 @@ class WebGLRenderer {
 
 			if ( program !== undefined ) {
 
-				console.log( `program${program.id}重复获取, 可能是设置了material.needsUpdate=true, 但材质没有任何更改` );
+				console.log( `material${material.id} program${program.id} 重复获取, 可能是设置了material.needsUpdate=true, 但材质没有任何更改` );
 
 				// early out if program and light state is identical
 
@@ -1586,9 +1586,9 @@ class WebGLRenderer {
 			console.log( `material${material.id} m_unforms: `, uniforms );
 
 			const progUniforms = program.getUniforms();
-			console.log( `material${material.id} => program${program.id} p_uniforms: `, progUniforms );
+			console.log( `material${material.id} program${program.id} p_uniforms: `, progUniforms );
 			const uniformsList = WebGLUniforms.seqWithValue( progUniforms.seq, uniforms );
-			console.log( 'm_unforms与p_uniform的交集: ', uniformsList );
+			console.log( `material${material.id} m_unforms与p_uniform的交集: `, uniformsList );
 
 			materialProperties.currentProgram = program;
 			materialProperties.uniformsList = uniformsList;
@@ -1763,7 +1763,7 @@ class WebGLRenderer {
 
 			if ( needsProgramChange === true ) {
 
-				console.log( `material${material.id} needsProgramChange: `, needsProgramChange, '----------------------------' );
+				console.log( `object${object.id}-${object.name} material${material.id} needsProgramChange: `, needsProgramChange, '------------------------------------------------------------------------------------' );
 				program = getProgram( material, scene, object );
 
 			}
@@ -2228,6 +2228,69 @@ class WebGLRenderer {
 					// the following if statement ensures valid read requests (no out-of-bounds pixels, see #8604)
 
 					if ( ( x >= 0 && x <= ( renderTarget.width - width ) ) && ( y >= 0 && y <= ( renderTarget.height - height ) ) ) {
+
+						_gl.readPixels( x, y, width, height, utils.convert( textureFormat ), utils.convert( textureType ), buffer );
+
+					}
+
+				} finally {
+
+					// restore framebuffer of current render target if necessary
+
+					const framebuffer = ( _currentRenderTarget !== null ) ? properties.get( _currentRenderTarget ).__webglFramebuffer : null;
+					state.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
+
+				}
+
+			}
+
+		};
+
+		this.readMultipleRenderTargetPixels = function ( renderTarget, x, y, width, height, buffer, activeTextureIndex ) {
+
+			if ( ! ( renderTarget && renderTarget.isWebGLRenderTarget ) ) {
+
+				console.error( 'THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not THREE.WebGLRenderTarget.' );
+				return;
+
+			}
+
+			const framebuffer = properties.get( renderTarget ).__webglFramebuffer;
+
+			if ( framebuffer ) {
+
+				state.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
+
+				try {
+
+					const texture = renderTarget.texture[ activeTextureIndex ];
+					const textureFormat = texture.format;
+					const textureType = texture.type;
+
+					if ( textureFormat !== RGBAFormat && utils.convert( textureFormat ) !== _gl.getParameter( _gl.IMPLEMENTATION_COLOR_READ_FORMAT ) ) {
+
+						console.error( 'THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not in RGBA or implementation defined format.' );
+						return;
+
+					}
+
+					const halfFloatSupportedByExt = ( textureType === HalfFloatType ) && ( extensions.has( 'EXT_color_buffer_half_float' ) || ( capabilities.isWebGL2 && extensions.has( 'EXT_color_buffer_float' ) ) );
+
+					if ( textureType !== UnsignedByteType && utils.convert( textureType ) !== _gl.getParameter( _gl.IMPLEMENTATION_COLOR_READ_TYPE ) && // Edge and Chrome Mac < 52 (#9513)
+						! ( textureType === FloatType && ( capabilities.isWebGL2 || extensions.has( 'OES_texture_float' ) || extensions.has( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
+						! halfFloatSupportedByExt ) {
+
+						console.error( 'THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not in UnsignedByteType or implementation defined type.' );
+						return;
+
+					}
+
+					// the following if statement ensures valid read requests (no out-of-bounds pixels, see #8604)
+
+					if ( ( x >= 0 && x <= ( renderTarget.width - width ) ) && ( y >= 0 && y <= ( renderTarget.height - height ) ) ) {
+
+						// NOTE: https://stackoverflow.com/questions/62478052/webgl-readpixels-with-multiple-render-targets
+						_gl.readBuffer( _gl.COLOR_ATTACHMENT0 + activeTextureIndex );
 
 						_gl.readPixels( x, y, width, height, utils.convert( textureFormat ), utils.convert( textureType ), buffer );
 
