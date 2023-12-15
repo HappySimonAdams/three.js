@@ -33,6 +33,7 @@
 			Color,
 			Vector2,
 			Fog,
+			UnsignedByteType,
 			FloatType,
 			NearestFilter,
 			WebGLMultipleRenderTargets,
@@ -84,16 +85,15 @@
 			renderer.domElement.style.touchAction = 'none';
 			document.body.appendChild( renderer.domElement );
 
-			renderTarget = new WebGLMultipleRenderTargets( width * window.devicePixelRatio, height * window.devicePixelRatio, 2 );
+			renderTarget = new WebGLMultipleRenderTargets( width * window.devicePixelRatio, height * window.devicePixelRatio, 2, {
+				// type: FloatType,
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
+			} );
+			renderTarget.texture[ 0 ].type = UnsignedByteType;
+			renderTarget.texture[ 1 ].type = FloatType;
 			renderTarget.texture[ 0 ].name = 'outColor';
 			renderTarget.texture[ 1 ].name = 'pickColor';
-			for ( let i = 0, il = renderTarget.texture.length; i < il; i ++ ) {
-
-				renderTarget.texture[ i ].minFilter = NearestFilter;
-				renderTarget.texture[ i ].magFilter = NearestFilter;
-				renderTarget.texture[ i ].type = FloatType;
-
-			}
 
 			controls = new OrbitControls( camera, renderer.domElement );
 			controls.target.set( 0, 0, 0 );
