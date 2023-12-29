@@ -170,10 +170,8 @@
 
 			"Lights": {
 				"AmbientLight": "api/en/lights/AmbientLight",
-				"AmbientLightProbe": "api/en/lights/AmbientLightProbe",
 				"DirectionalLight": "api/en/lights/DirectionalLight",
 				"HemisphereLight": "api/en/lights/HemisphereLight",
-				"HemisphereLightProbe": "api/en/lights/HemisphereLightProbe",
 				"Light": "api/en/lights/Light",
 				"LightProbe": "api/en/lights/LightProbe",
 				"PointLight": "api/en/lights/PointLight",
@@ -264,6 +262,7 @@
 			},
 
 			"Objects": {
+				"BatchedMesh": "api/en/objects/BatchedMesh",
 				"Bone": "api/en/objects/Bone",
 				"Group": "api/en/objects/Group",
 				"InstancedMesh": "api/en/objects/InstancedMesh",
@@ -346,7 +345,8 @@
 				"ConvexGeometry": "examples/en/geometries/ConvexGeometry",
 				"DecalGeometry": "examples/en/geometries/DecalGeometry",
 				"ParametricGeometry": "examples/en/geometries/ParametricGeometry",
-				"TextGeometry": "examples/en/geometries/TextGeometry"
+				"TextGeometry": "examples/en/geometries/TextGeometry",
+				"SDFGeometryGenerator": "examples/en/geometries/SDFGeometryGenerator"
 			},
 
 			"Helpers": {
@@ -400,6 +400,10 @@
 				"OBB": "examples/en/math/OBB"
 			},
 
+			"Misc": {
+				"Timer": "examples/en/misc/Timer"
+			},
+
 			"ConvexHull": {
 				"Face": "examples/en/math/convexhull/Face",
 				"HalfEdge": "examples/en/math/convexhull/HalfEdge",
@@ -420,6 +424,10 @@
 				"CameraUtils": "examples/en/utils/CameraUtils",
 				"SceneUtils": "examples/en/utils/SceneUtils",
 				"SkeletonUtils": "examples/en/utils/SkeletonUtils"
+			},
+			
+			"WebXR": {
+				"XREstimatedLight": "examples/en/webxr/XREstimatedLight"
 			}
 
 		},
@@ -445,6 +453,7 @@
 				"رسم خطوط": "manual/ar/introduction/Drawing-lines",
 				"إنشاء نص": "manual/ar/introduction/Creating-text",
 				"تحميل نماذج ثلاثية الأبعاد": "manual/ar/introduction/Loading-3D-models",
+				"المكتبات والإضافات": "manual/ar/introduction/Libraries-and-Plugins",
 				"الأسئلة الشائعة": "manual/ar/introduction/FAQ",
 				"روابط مفيدة": "manual/ar/introduction/Useful-links"
 			},
@@ -602,10 +611,8 @@
 
 			"Lights": {
 				"AmbientLight": "api/ar/lights/AmbientLight",
-				"AmbientLightProbe": "api/ar/lights/AmbientLightProbe",
 				"DirectionalLight": "api/ar/lights/DirectionalLight",
 				"HemisphereLight": "api/ar/lights/HemisphereLight",
-				"HemisphereLightProbe": "api/ar/lights/HemisphereLightProbe",
 				"Light": "api/ar/lights/Light",
 				"LightProbe": "api/ar/lights/LightProbe",
 				"PointLight": "api/ar/lights/PointLight",
@@ -752,6 +759,7 @@
 				"画线": "manual/zh/introduction/Drawing-lines",
 				"创建文字": "manual/zh/introduction/Creating-text",
 				"载入3D模型": "manual/zh/introduction/Loading-3D-models",
+				"库和插件": "manual/zh/introduction/Libraries-and-Plugins",
 				"常见问题": "manual/zh/introduction/FAQ",
 				"一些有用的链接": "manual/zh/introduction/Useful-links"
 			},
@@ -908,10 +916,8 @@
 
 			"灯光": {
 				"AmbientLight": "api/zh/lights/AmbientLight",
-				"AmbientLightProbe": "api/zh/lights/AmbientLightProbe",
 				"DirectionalLight": "api/zh/lights/DirectionalLight",
 				"HemisphereLight": "api/zh/lights/HemisphereLight",
-				"HemisphereLightProbe": "api/zh/lights/HemisphereLightProbe",
 				"Light": "api/zh/lights/Light",
 				"LightProbe": "api/zh/lights/LightProbe",
 				"PointLight": "api/zh/lights/PointLight",
@@ -1501,10 +1507,8 @@
 
 			"Luci": {
 				"AmbientLight": "api/it/lights/AmbientLight",
-				"AmbientLightProbe": "api/it/lights/AmbientLightProbe",
 				"DirectionalLight": "api/it/lights/DirectionalLight",
 				"HemisphereLight": "api/it/lights/HemisphereLight",
-				"HemisphereLightProbe": "api/it/lights/HemisphereLightProbe",
 				"Light": "api/it/lights/Light",
 				"LightProbe": "api/it/lights/LightProbe",
 				"PointLight": "api/it/lights/PointLight",
@@ -2031,10 +2035,8 @@
 
 			"Lights": {
 				"AmbientLight": "api/en/lights/AmbientLight",
-				"AmbientLightProbe": "api/en/lights/AmbientLightProbe",
 				"DirectionalLight": "api/en/lights/DirectionalLight",
 				"HemisphereLight": "api/en/lights/HemisphereLight",
-				"HemisphereLightProbe": "api/en/lights/HemisphereLightProbe",
 				"Light": "api/en/lights/Light",
 				"LightProbe": "api/en/lights/LightProbe",
 				"PointLight": "api/en/lights/PointLight",
