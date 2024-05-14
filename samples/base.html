@@ -26,6 +26,8 @@
 			BoxGeometry,
 			MeshBasicMaterial,
 			Mesh,
+			Euler,
+			Quaternion,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -47,7 +49,7 @@
 			initViewer();
 			initObjects();
 			initGUI();
-		
+
 		}
 
 		function initViewer() {
@@ -74,12 +76,14 @@
 
 			controls = new OrbitControls( camera, renderer.domElement );
 			controls.target.set( 0, 0, 0 );
-			// controls.update();
 
 			stats = new Stats();
 			document.body.appendChild( stats.dom );
 
 			controls.addEventListener( 'change', () => isDirty = true );
+			// renderer.domElement.addEventListener( 'mousedown', onMouseDown, false );
+			// renderer.domElement.addEventListener( 'mousemove', onMouseMove, false );
+			// renderer.domElement.addEventListener( 'mouseup', onMouseUp, false );
 			window.addEventListener( 'resize', onWindowResize, false );
 
 		}
@@ -148,11 +152,65 @@
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
 			isDirty = true;
-		
+
+		}
+
+		let isDragging = false;
+		let previousMousePosition = {
+			x: 0,
+			y: 0
+		};
+
+		function onMouseDown() {
+
+			isDragging = true;
+
+		}
+
+		function onMouseMove( e ) {
+
+			const deltaMove = {
+				x: e.offsetX - previousMousePosition.x,
+				y: e.offsetY - previousMousePosition.y
+			};
+
+			if ( isDragging ) {
+
+				const deltaRotationQuaternion = new Quaternion()
+					.setFromEuler( new Euler(
+						toRadians( deltaMove.y * 0.1 ),
+						toRadians( deltaMove.x * 0.1 ),
+						0,
+						'XYZ'
+					) );
+
+				camera.quaternion.multiplyQuaternions( deltaRotationQuaternion, camera.quaternion );
+
+				isDirty = true;
+
+			}
+
+			previousMousePosition = {
+				x: e.offsetX,
+				y: e.offsetY
+			};
+
+		}
+
+		function onMouseUp() {
+
+			isDragging = false;
+
+		}
+
+		function toRadians( angle ) {
+
+			return angle * ( Math.PI / 180 );
+
 		}
 
 		function render() {
-		
+
 			requestAnimationFrame( render );
 
 			const now = performance.now();
@@ -160,7 +218,7 @@
 			lastTime = now;
 
 			stats.begin();
-		
+
 			if ( isDirty ) {
 
 				isDirty = false;

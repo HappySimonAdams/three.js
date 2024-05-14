@@ -895,7 +895,7 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 		// if ( parameters.shaderID === 'phong' ) {
 
 		// 	console.log( '*VERTEX*', vertexGlsl );
-		console.log( '*FRAGMENT*', fragmentGlsl );
+		// console.log( '*FRAGMENT*', fragmentGlsl );
 
 	}
 
