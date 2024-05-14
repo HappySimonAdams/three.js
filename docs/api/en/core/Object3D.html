@@ -325,10 +325,10 @@
 
 		<h3>[method:this copy]( [param:Object3D object], [param:Boolean recursive] )</h3>
 		<p>
-			recursive -- if true, descendants of the object are also copied. Default
-			is true.<br /><br />
+			recursive -- If set to `true`, descendants of the object are copied next to the existing ones. 
+			If set to `false`, descendants are left unchanged. Default is `true`.<br /><br />
 
-			Copy the given object into this object. Note: event listeners and
+			Copies the given object into this object. Note: Event listeners and
 			user-defined callbacks ([page:.onAfterRender] and [page:.onBeforeRender])
 			are not copied.
 		</p>
@@ -602,6 +602,28 @@
 			vector - A vector representing a position in world space.<br /><br />
 
 			Converts the vector from world space to this object's local space.
+		</p>
+
+		<h2>Events</h2>
+
+		<h3>added</h3>
+		<p>
+			Fires when the object has been added to its parent object.
+		</p>
+
+		<h3>removed</h3>
+		<p>
+			Fires when the object has been removed from its parent object.
+		</p>
+
+		<h3>childadded</h3>
+		<p>
+			Fires when a new child object has been added.
+		</p>
+
+		<h3>childremoved</h3>
+		<p>
+			Fires when a new child object has been removed.
 		</p>
 
 		<h2>Source</h2>
