@@ -22,7 +22,6 @@
 			// PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
-			WebGL1Renderer,
 			AxesHelper,
 			PlaneGeometry,
 			MeshBasicMaterial,
@@ -63,16 +62,13 @@
 			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0, 100 );
 
 			scene = new Scene();
-			// scene.matrixAutoUpdate = false;
-			// /* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			// scene.matrixWorldAutoUpdate = false;
+			scene.matrixAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
 			scene.add( axes );
 
-			// renderer = new WebGLRenderer();
-			renderer = new WebGL1Renderer();
+			renderer = new WebGLRenderer();
 			renderer.setClearColor( 0x333333 );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( width, height );
@@ -117,7 +113,12 @@
 				'toneMapping': 'reihard',
 				'exposure': renderer.toneMappingExposure,
 			};
-			gui.add( gui_options, 'toneMapping', { 'linear': LinearToneMapping, 'reihard': ReinhardToneMapping, 'none': NoToneMapping } ).onChange( ( value ) => {
+			const toneMappingParams = {
+				'linear': LinearToneMapping,
+				'reihard': ReinhardToneMapping,
+				'none': NoToneMapping
+			};
+			gui.add( gui_options, 'toneMapping', toneMappingParams ).onChange( ( value ) => {
 
 				renderer.toneMapping = value;
 				isDirty = true;
