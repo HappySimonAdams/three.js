@@ -99,11 +99,13 @@
 			},
 
 			"Extras": {
+				"Controls": "api/en/extras/Controls",
 				"DataUtils": "api/en/extras/DataUtils",
 				"Earcut": "api/en/extras/Earcut",
 				"ImageUtils": "api/en/extras/ImageUtils",
 				"PMREMGenerator": "api/en/extras/PMREMGenerator",
-				"ShapeUtils": "api/en/extras/ShapeUtils"
+				"ShapeUtils": "api/en/extras/ShapeUtils",
+				"TextureUtils": "api/en/extras/TextureUtils"
 			},
 
 			"Extras / Core": {
@@ -240,6 +242,7 @@
 				"Interpolant": "api/en/math/Interpolant",
 				"Line3": "api/en/math/Line3",
 				"MathUtils": "api/en/math/MathUtils",
+				"Matrix2": "api/en/math/Matrix2",
 				"Matrix3": "api/en/math/Matrix3",
 				"Matrix4": "api/en/math/Matrix4",
 				"Plane": "api/en/math/Plane",
@@ -343,8 +346,8 @@
 				"ConvexGeometry": "examples/en/geometries/ConvexGeometry",
 				"DecalGeometry": "examples/en/geometries/DecalGeometry",
 				"ParametricGeometry": "examples/en/geometries/ParametricGeometry",
-				"TextGeometry": "examples/en/geometries/TextGeometry",
-				"SDFGeometryGenerator": "examples/en/geometries/SDFGeometryGenerator"
+				"TeapotGeometry": "examples/en/geometries/TeapotGeometry",
+				"TextGeometry": "examples/en/geometries/TextGeometry"
 			},
 
 			"Helpers": {
@@ -357,6 +360,14 @@
 
 			"Lights": {
 				"LightProbeGenerator": "examples/en/lights/LightProbeGenerator"
+			},
+
+			"Lines": {
+				"Line2": "examples/en/lines/Line2",
+				"LineGeometry": "examples/en/lines/LineGeometry",
+				"LineMaterial": "examples/en/lines/LineMaterial",
+				"LineSegments2": "examples/en/lines/LineSegments2",
+				"LineSegmentsGeometry": "examples/en/lines/LineSegmentsGeometry"
 			},
 
 			"Loaders": {
@@ -378,7 +389,8 @@
 			},
 
 			"Objects": {
-				"Lensflare": "examples/en/objects/Lensflare"
+				"Lensflare": "examples/en/objects/Lensflare",
+				"Sky": "examples/en/objects/Sky"
 			},
 
 			"Post-Processing": {
@@ -404,6 +416,10 @@
 				"Timer": "examples/en/misc/Timer"
 			},
 
+			"Modifiers": {
+				"EdgeSplit": "examples/en/modifiers/EdgeSplitModifier"
+			},
+
 			"ConvexHull": {
 				"Face": "examples/en/math/convexhull/Face",
 				"HalfEdge": "examples/en/math/convexhull/HalfEdge",
@@ -425,7 +441,7 @@
 				"SceneUtils": "examples/en/utils/SceneUtils",
 				"SkeletonUtils": "examples/en/utils/SkeletonUtils"
 			},
-			
+
 			"WebXR": {
 				"XREstimatedLight": "examples/en/webxr/XREstimatedLight"
 			}
@@ -845,11 +861,13 @@
 			},
 
 			"附件": {
+				"Controls": "api/zh/extras/Controls",
 				"DataUtils": "api/zh/extras/DataUtils",
 				"Earcut": "api/zh/extras/Earcut",
 				"ImageUtils": "api/zh/extras/ImageUtils",
 				"PMREMGenerator": "api/zh/extras/PMREMGenerator",
-				"ShapeUtils": "api/zh/extras/ShapeUtils"
+				"ShapeUtils": "api/zh/extras/ShapeUtils",
+				"TextureUtils": "api/zh/extras/TextureUtils"
 			},
 
 			"附件 / 核心": {
@@ -1089,8 +1107,8 @@
 				"ConvexGeometry": "examples/zh/geometries/ConvexGeometry",
 				"DecalGeometry": "examples/zh/geometries/DecalGeometry",
 				"ParametricGeometry": "examples/zh/geometries/ParametricGeometry",
-				"TextGeometry": "examples/zh/geometries/TextGeometry",
-				"SDFGeometryGenerator": "examples/zh/geometries/SDFGeometryGenerator"
+				"TeapotGeometry": "examples/zh/geometries/TeapotGeometry",
+				"TextGeometry": "examples/zh/geometries/TextGeometry"
 			},
 
 			"辅助对象": {
@@ -1112,17 +1130,20 @@
 				"GLTFLoader": "examples/zh/loaders/GLTFLoader",
 				"KTX2Loader": "examples/zh/loaders/KTX2Loader",
 				"LDrawLoader": "examples/zh/loaders/LDrawLoader",
+				"LUT3dlLoader": "examples/zh/loaders/LUT3dlLoader",
+				"LUTCubeLoader": "examples/zh/loaders/LUTCubeLoader",
 				"MMDLoader": "examples/zh/loaders/MMDLoader",
 				"MTLLoader": "examples/zh/loaders/MTLLoader",
 				"OBJLoader": "examples/zh/loaders/OBJLoader",
 				"PCDLoader": "examples/zh/loaders/PCDLoader",
-				"PDBLoader": "examples/en/loaders/PDBLoader",
+				"PDBLoader": "examples/zh/loaders/PDBLoader",
 				"SVGLoader": "examples/zh/loaders/SVGLoader",
 				"TGALoader": "examples/zh/loaders/TGALoader"
 			},
 
 			"物体": {
-				"Lensflare": "examples/zh/objects/Lensflare"
+				"Lensflare": "examples/zh/objects/Lensflare",
+				"Sky": "examples/zh/objects/Sky"
 			},
 
 			"后期处理": {
@@ -1142,6 +1163,10 @@
 				"LookupTable": "examples/zh/math/Lut",
 				"MeshSurfaceSampler": "examples/zh/math/MeshSurfaceSampler",
 				"OBB": "examples/zh/math/OBB"
+			},
+
+			"修改器":{
+				"EdgeSplitModifier": "examples/zh/modifiers/EdgeSplitModifier"
 			},
 
 			"杂项": {
@@ -1340,15 +1365,20 @@
 		"Addons": {
 
 			"컨트롤": {
+				"ArcballControls": "examples/ko/controls/ArcballControls",
 				"DragControls": "examples/ko/controls/DragControls",
 				"FirstPersonControls": "examples/ko/controls/FirstPersonControls",
 				"FlyControls": "examples/ko/controls/FlyControls",
+				"MapControls": "examples/ko/controls/MapControls",
 				"OrbitControls": "examples/ko/controls/OrbitControls",
 				"PointerLockControls": "examples/ko/controls/PointerLockControls",
 				"TrackballControls": "examples/ko/controls/TrackballControls",
 				"TransformControls": "examples/ko/controls/TransformControls"
-			}
+			},
 
+			"WebXR": {
+				"XREstimatedLight": "examples/ko/webxr/XREstimatedLight"
+			}
 		}
 
 	},
