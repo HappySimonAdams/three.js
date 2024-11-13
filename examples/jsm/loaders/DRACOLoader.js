@@ -189,6 +189,8 @@ class DRACOLoader extends Loader {
 
 	_createGeometry( geometryData ) {
 
+		console.log( '🚀 ~ DRACOLoader ~ _createGeometry ~ geometryData:', geometryData );
+
 		const geometry = new BufferGeometry();
 
 		if ( geometryData.index ) {
@@ -471,6 +473,8 @@ function DRACOWorker() {
 	};
 
 	function decodeGeometry( draco, decoder, array, taskConfig ) {
+
+		console.log( '🚀 ~ decodeGeometry ~ taskConfig:', taskConfig );
 
 		const attributeIDs = taskConfig.attributeIDs;
 		const attributeTypes = taskConfig.attributeTypes;

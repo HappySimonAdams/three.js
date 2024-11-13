@@ -24,10 +24,12 @@
 			WebGLRenderer,
 			AxesHelper,
 			BoxGeometry,
+			RingGeometry,
 			MeshBasicMaterial,
 			Mesh,
 			Euler,
 			Quaternion,
+			DoubleSide,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -61,7 +63,7 @@
 			scene = new Scene();
 			scene.matrixAutoUpdate = false;
 			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			scene.matrixWorldAutoUpdate = false;
+			// scene.matrixWorldAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
@@ -107,9 +109,16 @@
 			mesh2.position.x = - 2;
 			mesh2.updateMatrix();
 			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-			mesh2.updateMatrixWorld();
 			// mesh2.renderOrder = 1;
 			scene.add( mesh2 );
+
+			const ringGeometry = new RingGeometry( 0.5, 0.51, 32 );
+			const mesh3 = new Mesh( ringGeometry, new MeshBasicMaterial( { color: 0x990099, side: DoubleSide } ) );
+			mesh3.name = 'mesh3';
+			mesh3.matrixAutoUpdate = false;
+			mesh3.position.x = 2;
+			mesh3.updateMatrix();
+			scene.add( mesh3 );
 
 		}
 

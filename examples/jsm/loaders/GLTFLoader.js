@@ -364,6 +364,8 @@ class GLTFLoader extends Loader {
 
 		}
 
+		console.log( '🚀 ~ GLTFLoader json:', json );
+
 		const parser = new GLTFParser( json, {
 
 			path: path || this.resourcePath || '',
@@ -2271,6 +2273,7 @@ function createDefaultMaterial( cache ) {
 	if ( cache[ 'DefaultMaterial' ] === undefined ) {
 
 		cache[ 'DefaultMaterial' ] = new MeshStandardMaterial( {
+		// cache[ 'DefaultMaterial' ] = new MeshPhysicalMaterial( {
 			color: 0xFFFFFF,
 			emissive: 0x000000,
 			metalness: 1,
@@ -3483,7 +3486,8 @@ class GLTFParser {
 
 	getMaterialType( /* materialIndex */ ) {
 
-		return MeshStandardMaterial;
+		// return MeshStandardMaterial;
+		return MeshPhysicalMaterial;
 
 	}
 

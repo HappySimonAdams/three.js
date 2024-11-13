@@ -271,6 +271,7 @@ class KTX2Loader extends Loader {
 
 	_createTextureFrom( transcodeResult, container ) {
 
+		console.log( transcodeResult );
 		const { faces, width, height, format, type, error, dfdFlags } = transcodeResult;
 
 		if ( type === 'error' ) return Promise.reject( error );

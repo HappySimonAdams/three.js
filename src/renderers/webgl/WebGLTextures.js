@@ -182,7 +182,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			const transfer = forceLinearTransfer ? LinearTransfer : ColorManagement.getTransfer( colorSpace );
 
 			if ( glType === _gl.FLOAT ) internalFormat = _gl.RGBA32F;
-			if ( glType === _gl.FLOAT ) console.log( 'internalFormat: gl.RGBA32F' );
+			// if ( glType === _gl.FLOAT ) console.log( 'internalFormat: gl.RGBA32F' );
 			if ( glType === _gl.HALF_FLOAT ) internalFormat = _gl.RGBA16F;
 			if ( glType === _gl.UNSIGNED_BYTE ) internalFormat = ( transfer === SRGBTransfer ) ? _gl.SRGB8_ALPHA8 : _gl.RGBA8;
 			if ( glType === _gl.UNSIGNED_SHORT_4_4_4_4 ) internalFormat = _gl.RGBA4;
@@ -690,7 +690,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
-		console.log( `texture${texture.id} forceUpload`, forceUpload );
+		// console.log( `texture${texture.id} forceUpload`, forceUpload );
 		const source = texture.source;
 
 		state.bindTexture( textureType, textureProperties.__webglTexture, _gl.TEXTURE0 + slot );

@@ -1618,7 +1618,7 @@ class WebGLRenderer {
 
 			}
 
-			console.log( `material${material.id} programCacheKey: ${programCacheKey}` );
+			// console.log( `material${material.id} programCacheKey: ${programCacheKey}` );
 			let program = programs.get( programCacheKey );
 
 			if ( program !== undefined ) {
@@ -1903,7 +1903,7 @@ class WebGLRenderer {
 
 			if ( needsProgramChange === true ) {
 
-				console.log( `object${object.id}-${object.name} material${material.id} needsProgramChange: `, needsProgramChange, '------------------------------------------------------------------------------------' );
+				console.log( `object${object.id}-${object.name} material${material.id} needsProgramChange: `, needsProgramChange );
 				program = getProgram( material, scene, object );
 
 			}
