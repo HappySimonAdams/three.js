@@ -989,6 +989,9 @@ async function createRawTexture( container ) {
 
 		texture = new CompressedTexture( mipmaps, container.pixelWidth, container.pixelHeight );
 
+		texture.minFilter = mipmaps.length === 1 ? LinearFilter : LinearMipmapLinearFilter;
+		texture.magFilter = LinearFilter;
+
 	}
 
 	texture.mipmaps = mipmaps;
