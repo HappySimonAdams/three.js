@@ -79,7 +79,7 @@
 
 				const texture = new THREE.CanvasTexture( createImage() );
 
-				const material = new THREE.MeshBasicMaterial( { map: texture, wireframe: true } );
+				const material = new THREE.MeshBasicMaterial( { map: texture, wireframe: false } );
 
 				const mesh = new THREE.Mesh( geometry, material );
 

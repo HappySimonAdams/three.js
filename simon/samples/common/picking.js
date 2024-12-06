@@ -1,13 +1,4 @@
-import {
-	Raycaster,
-	Vector2,
-	Vector3,
-	Plane,
-	WebGLRenderTarget,
-	Color,
-	FloatType,
-	UnsignedByteType,
-} from '../../src/Three.js';
+import { Raycaster, Vector2, Vector3, Plane, WebGLRenderTarget, Color, FloatType, UnsignedByteType } from '../../../build/three.module.js';
 
 const _raycaster = new Raycaster();
 const _mouse = new Vector2();

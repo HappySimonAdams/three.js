@@ -27,13 +27,12 @@
 		<script type="module">
 
 			import * as THREE from 'three';
-
 			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 			import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-			let mesh, renderer, scene, camera, controls;
+			let renderer, scene, camera, controls;
 			let gui, guiExposure = null;
 
 			const params = {
@@ -102,11 +101,8 @@
 				controls.target.set( 0, 0, - 0.2 );
 				controls.update();
 
-				const rgbeLoader = new RGBELoader()
-					.setPath( 'textures/equirectangular/' );
-
+				const rgbeLoader = new RGBELoader().setPath( 'textures/equirectangular/' );
 				const gltfLoader = new GLTFLoader().setPath( 'models/gltf/DamagedHelmet/glTF/' );
-
 				const [ texture, gltf ] = await Promise.all( [
 					rgbeLoader.loadAsync( 'venice_sunset_1k.hdr' ),
 					gltfLoader.loadAsync( 'DamagedHelmet.gltf' ),
@@ -121,8 +117,13 @@
 
 				// model
 
-				mesh = gltf.scene.getObjectByName( 'node_damagedHelmet_-6514' );
-				scene.add( mesh );
+				console.log( 'init() ~ gltf:', gltf );
+
+				// NOTE: 通过以下方式 add mesh 时，控制台打印信息显示 gltf.scene.children 为空。因为 Object3D.add() 会转移 parent 引用
+				// const mesh = gltf.scene.getObjectByName( 'node_damagedHelmet_-6514' );
+				// scene.add( mesh );
+
+				scene.add( gltf.scene );
 
 				render();
 
@@ -131,54 +132,45 @@
 				gui = new GUI();
 				const toneMappingFolder = gui.addFolder( 'Tone Mapping' );
 
-				toneMappingFolder.add( params, 'toneMapping', Object.keys( toneMappingOptions ) )
+				toneMappingFolder.add( params, 'toneMapping', Object.keys( toneMappingOptions ) ).name( 'type' ).onChange( function () {
 
-					.name( 'type' )
-					.onChange( function () {
+					updateGUI();
 
-						updateGUI( toneMappingFolder );
+					renderer.toneMapping = toneMappingOptions[ params.toneMapping ];
+					render();
 
-						renderer.toneMapping = toneMappingOptions[ params.toneMapping ];
-						render();
+				} );
 
-					} );
+				guiExposure = toneMappingFolder.add( params, 'exposure', 0, 2 ).onChange( function ( value ) {
 
-				guiExposure = toneMappingFolder.add( params, 'exposure', 0, 2 )
+					renderer.toneMappingExposure = value;
+					render();
 
-					.onChange( function ( value ) {
-
-						renderer.toneMappingExposure = value;
-						render();
-
-					} );
+				} );
 
 				const backgroundFolder = gui.addFolder( 'Background' );
 
-				backgroundFolder.add( params, 'blurriness', 0, 1 )
+				backgroundFolder.add( params, 'blurriness', 0, 1 ).onChange( function ( value ) {
 
-					.onChange( function ( value ) {
+					scene.backgroundBlurriness = value;
+					render();
 
-						scene.backgroundBlurriness = value;
-						render();
+				} );
 
-					} );
+				backgroundFolder.add( params, 'intensity', 0, 1 ).onChange( function ( value ) {
 
-				backgroundFolder.add( params, 'intensity', 0, 1 )
+					scene.backgroundIntensity = value;
+					render();
 
-					.onChange( function ( value ) {
+				} );
 
-						scene.backgroundIntensity = value;
-						render();
-
-					} );
-
-				updateGUI( toneMappingFolder );
+				updateGUI();
 
 				gui.open();
 
 			}
 
-			function updateGUI( folder ) {
+			function updateGUI() {
 
 				if ( params.toneMapping === 'None' ) {
 
@@ -209,6 +201,8 @@
 				renderer.render( scene, camera );
 
 			}
+
+			window.scene = scene;
 
 		</script>
 

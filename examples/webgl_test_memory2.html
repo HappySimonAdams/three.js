@@ -74,7 +74,6 @@
 			let fragmentShader, vertexShader;
 
 			init();
-			setInterval( render, 1000 / 60 );
 
 			function init() {
 
@@ -111,6 +110,7 @@
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setAnimationLoop( render );
 				container.appendChild( renderer.domElement );
 
 			}

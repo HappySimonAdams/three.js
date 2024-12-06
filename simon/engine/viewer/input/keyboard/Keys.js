@@ -1,0 +1,142 @@
+/**
+ * https://www.w3.org/TR/2017/CR-uievents-code-20170601/
+ */
+export const Keys = {
+	// `~
+	Backquote: '`',
+	// \|
+	Backslash: '\\',
+	Backspace: 'backspace',
+	// [{
+	BracketLeft: '[',
+	// ]}
+	BracketRight: ']',
+	// ,<
+	Comma: ',',
+	// 0)
+	Digit0: '0',
+	// 1!
+	Digit1: '1',
+	// 2@
+	Digit2: '2',
+	// 3#
+	Digit3: '3',
+	// 4$
+	Digit4: '4',
+	// 5%
+	Digit5: '5',
+	// 6^
+	Digit6: '6',
+	// 7&
+	Digit7: '7',
+	// 8*
+	Digit8: '8',
+	// 9(
+	Digit9: '9',
+	//:+
+	Equal: '=',
+	KeyA: 'a',
+	KeyB: 'b',
+	KeyC: 'c',
+	KeyD: 'd',
+	KeyE: 'e',
+	KeyF: 'f',
+	KeyG: 'g',
+	KeyH: 'h',
+	KeyI: 'i',
+	KeyJ: 'j',
+	KeyK: 'k',
+	KeyL: 'l',
+	KeyM: 'm',
+	KeyN: 'n',
+	KeyO: 'o',
+	KeyP: 'p',
+	KeyQ: 'q',
+	KeyR: 'r',
+	KeyS: 's',
+	KeyT: 't',
+	KeyU: 'u',
+	KeyV: 'v',
+	KeyW: 'w',
+	KeyX: 'x',
+	KeyY: 'y',
+	KeyZ: 'z',
+	Minus: '-',
+	// .>
+	Period: '.',
+	// '"
+	Quote: '\'',
+	// ;:
+	Semicolon: ';',
+	// /?
+	Slash: '/',
+
+	// NOTE: 修饰键需要特殊处理
+	AltLeft: 'alt',
+	AltRight: 'alt',
+	ControlLeft: 'ctrl',
+	ControlRight: 'ctrl',
+	MetaLeft: 'meta',
+	MetaRight: 'meta',
+	ShiftLeft: 'shift',
+	ShiftRight: 'shift',
+
+	CapsLock: 'capslock',
+	ContextMenu: 'contextmenu',
+	Enter: 'enter',
+	Space: 'space',
+	Tab: 'tab',
+
+	Delete: 'delete',
+	End: 'end',
+	Home: 'home',
+	Insert: 'insert',
+	PageDown: 'pagedown',
+	PageUp: 'pageup',
+
+	ArrowDown: 'down',
+	ArrowLeft: 'left',
+	ArrowRight: 'right',
+	ArrowUp: 'up',
+
+	// On the Mac, the "NumLock" code should be used for the numpad Clear key.
+	NumLock: 'numlock',
+	Numpad0: 'num0',
+	Numpad1: 'num1',
+	Numpad2: 'num2',
+	Numpad3: 'num3',
+	Numpad4: 'num4',
+	Numpad5: 'num5',
+	Numpad6: 'num6',
+	Numpad7: 'num7',
+	Numpad8: 'num8',
+	Numpad9: 'num9',
+	NumpadAdd: 'numadd',
+	NumpadClear: 'numclear',
+	// Delete
+	NumpadDecimal: 'numdecimal',
+	NumpadDivide: 'numdivide',
+	NumpadEnter: 'numenter',
+	NumpadMultiply: 'nummultiply',
+	NumpadSubtract: 'numsubtract',
+
+	Escape: 'esc',
+	F1: 'f1',
+	F2: 'f2',
+	F3: 'f3',
+	F4: 'f4',
+	F5: 'f5',
+	F6: 'f6',
+	F7: 'f7',
+	F8: 'f8',
+	F9: 'f9',
+	F10: 'f10',
+	F11: 'f11',
+	F12: 'f12',
+	F13: 'f13',
+	F14: 'f14',
+	F15: 'f15',
+	PrintScreen: 'printscreen',
+	ScrollLock: 'scrolllock',
+	Pause: 'pause',
+};

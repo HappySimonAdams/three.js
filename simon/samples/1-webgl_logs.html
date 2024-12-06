@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>webgl logs</title>
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports":{
+				"three":"../../src/Three.js"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import { WebGLRenderer } from 'three';
+
+		const renderer = new WebGLRenderer();
+
+		const { capabilities, extensions } = renderer;
+		const gl = renderer.getContext();
+
+		// Capabilities
+
+		console.log( 'gl.MAX_TEXTURE_IMAGE_UNITS:', capabilities.maxTextures );
+		console.log( 'gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS:', capabilities.maxVertexTextures );
+		console.log( 'gl.MAX_TEXTURE_SIZE:', capabilities.maxTextureSize );
+		console.log( 'gl.MAX_CUBE_MAP_TEXTURE_SIZE:', capabilities.maxCubemapSize );
+		console.log( 'gl.MAX_VERTEX_ATTRIBS:', capabilities.maxAttributes );
+		console.log( 'gl.MAX_VERTEX_UNIFORM_VECTORS:', capabilities.maxVertexUniforms );
+		console.log( 'gl.MAX_FRAGMENT_UNIFORM_VECTORS:', capabilities.maxFragmentUniforms );
+		console.log( 'gl.MAX_VARYING_VECTORS:', capabilities.maxVaryings );
+		console.log( 'gl.MAX_SAMPLES', capabilities.maxSamples );
+		console.log( 'gl.MAX_UNIFORM_BUFFER_BINDINGS:', gl.getParameter( gl.MAX_UNIFORM_BUFFER_BINDINGS ) );
+
+		console.log( '========================================================' );
+
+		// Extensions
+
+		console.log( 'supported extensions:', gl.getSupportedExtensions() );
+		console.log( 'gl.EXT_clip_control:', extensions.get( 'EXT_clip_control' ) );
+		// console.log( 'gl.WEBGL_multisampled_render_to_texture:', extensions.get( 'WEBGL_multisampled_render_to_texture' ) );
+
+		window.renderer = renderer;
+	</script>
+</body>
+</html>

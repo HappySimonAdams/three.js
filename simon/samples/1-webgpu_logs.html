@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>webgpu logs</title>
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../../build/three.webgpu.js"
+			}
+		}
+	</script>
+
+	<script type="module">
+		console.log( 'getPreferredCanvasFormat:', navigator.gpu.getPreferredCanvasFormat() );
+	</script>
+</body>
+</html>

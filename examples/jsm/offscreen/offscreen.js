@@ -1,8 +1,18 @@
-import init from './scene.js';
+import { init, resize } from './scene.js';
 
 self.onmessage = function ( message ) {
 
 	const data = message.data;
-	init( data.drawingSurface, data.width, data.height, data.pixelRatio, data.path );
+	const type = data.type;
+
+	if ( type === 'init' ) {
+
+		init( data.drawingSurface, data.width, data.height, data.pixelRatio, data.path );
+
+	} else if ( type === 'resize' ) {
+
+		resize( data.width, data.height );
+
+	}
 
 };

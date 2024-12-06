@@ -25,7 +25,6 @@
 		<script type="module">
 
 			import * as THREE from 'three';
-
 			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { Water } from 'three/addons/objects/Water2.js';
@@ -108,16 +107,16 @@
 
 				// skybox
 
-				const cubeTextureLoader = new THREE.CubeTextureLoader();
-				cubeTextureLoader.setPath( 'textures/cube/Park2/' );
+				// const cubeTextureLoader = new THREE.CubeTextureLoader();
+				// cubeTextureLoader.setPath( 'textures/cube/Park2/' );
 
-				const cubeTexture = cubeTextureLoader.load( [
-					'posx.jpg', 'negx.jpg',
-					'posy.jpg', 'negy.jpg',
-					'posz.jpg', 'negz.jpg'
-				] );
+				// const cubeTexture = cubeTextureLoader.load( [
+				// 	'posx.jpg', 'negx.jpg',
+				// 	'posy.jpg', 'negy.jpg',
+				// 	'posz.jpg', 'negz.jpg'
+				// ] );
 
-				scene.background = cubeTexture;
+				// scene.background = cubeTexture;
 
 				// light
 

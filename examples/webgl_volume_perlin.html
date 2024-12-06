@@ -22,10 +22,10 @@
 		</script>
 
 		<script type="module">
+
 			import * as THREE from 'three';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
-
 			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
 			let renderer, scene, camera;
@@ -203,10 +203,16 @@
 					},
 					vertexShader,
 					fragmentShader,
-					side: THREE.BackSide,
+					// side: THREE.BackSide
 				} );
 
 				mesh = new THREE.Mesh( geometry, material );
+				/* mesh.onBeforeRender = function () {
+
+					this.material.uniforms.cameraPos.value.copy( camera.position );
+
+				}; */
+
 				scene.add( mesh );
 
 				//

@@ -5,7 +5,6 @@ function WebGLUniformsGroups( gl, info, capabilities, state ) {
 	let allocatedBindingPoints = [];
 
 	const maxBindingPoints = gl.getParameter( gl.MAX_UNIFORM_BUFFER_BINDINGS ); // binding points are global whereas block indices are per shader program
-	console.log( 'gl.MAX_UNIFORM_BUFFER_BINDINGS: ', maxBindingPoints );
 
 	function bind( uniformsGroup, program ) {
 

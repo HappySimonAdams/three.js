@@ -62,7 +62,7 @@
 		<div id="ui">
 			<button id="button">START JANK</button><br/>
 			<span id="result"></span>
-		</div>
+		</div>.0
 
 		<script type="importmap">
 			{
@@ -75,20 +75,22 @@
 
 		<script type="module">
 
-			import initJank from 'three/addons/offscreen/jank.js';
-			import init from 'three/addons/offscreen/scene.js';
-			
+			// import initJank from 'three/addons/offscreen/jank.js';
+			import { init, resize } from 'three/addons/offscreen/scene.js';
+
 			// onscreen
 
+			const container = document.getElementById( 'container' );
 			const canvas1 = document.getElementById( 'canvas1' );
 			const canvas2 = document.getElementById( 'canvas2' );
 
 			const width = canvas1.clientWidth;
 			const height = canvas1.clientHeight;
 			const pixelRatio = window.devicePixelRatio;
+			console.log( width, height );
 
 			init( canvas1, width, height, pixelRatio, './' );
-			initJank();
+			// initJank();
 
 			// offscreen
 
@@ -105,11 +107,14 @@
 
 			}
 
+			let offscreen, worker;
+
 			if ( supportOffScreenWebGL ) {
 
-				const offscreen = canvas2.transferControlToOffscreen();
-				const worker = new Worker( 'jsm/offscreen/offscreen.js', { type: 'module' } );
+				offscreen = canvas2.transferControlToOffscreen();
+				worker = new Worker( 'jsm/offscreen/offscreen.js', { type: 'module' } );
 				worker.postMessage( {
+					type: 'init',
 					drawingSurface: offscreen,
 					width: canvas2.clientWidth,
 					height: canvas2.clientHeight,
@@ -120,6 +125,23 @@
 			} else {
 
 				document.getElementById( 'message' ).style.display = 'block';
+
+			}
+
+			window.addEventListener( 'resize', onWindowResize );
+
+			function onWindowResize() {
+
+				const halfW = container.clientWidth / 2;
+				const height = container.clientHeight;
+
+				resize( halfW, height );
+
+				worker.postMessage( {
+					type: 'resize',
+					width: halfW,
+					height,
+				} );
 
 			}
 

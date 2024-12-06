@@ -37,7 +37,8 @@
 				vec4 vertexPositionEye = viewMatrix * modelMatrix * vec4( position, 1.0 );
 
 				vPositionEye = (modelMatrix * vec4( position, 1.0 )).xyz;
-				vNormalEye = (vec4(normal , 1.)).xyz;
+				// vNormalEye = (vec4(normal , 1.)).xyz;
+				vNormalEye = normalMatrix * normal;
 
 				vUv = uv;
 
@@ -57,20 +58,20 @@
 				vec4 lightColor[POINTLIGHTS_MAX];
 				float pointLightsCount;
 			};
-			
+
 			#include <common>
 			float getDistanceAttenuation( const in float lightDistance, const in float cutoffDistance, const in float decayExponent ) {
-		
+
 				float distanceFalloff = 1.0 / max( pow( lightDistance, decayExponent ), 0.01 );
-		
+
 				if ( cutoffDistance > 0.0 ) {
-		
+
 					distanceFalloff *= pow2( saturate( 1.0 - pow4( lightDistance / cutoffDistance ) ) );
-		
+
 				}
-		
+
 				return distanceFalloff;
-			
+
 			}
 
 			in vec2 vUv;
@@ -110,7 +111,6 @@
 		<script type="module">
 
 			import * as THREE from 'three';
-
 			import Stats from 'three/addons/libs/stats.module.js';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -123,7 +123,7 @@
 
 			const pointLightsMax = 300;
 
-			const api = {
+			const params = {
 				count: 200,
 			};
 
@@ -167,8 +167,8 @@
 				}
 
 				lightingUniformsGroup.add( data ); // light position
-				lightingUniformsGroup.add( dataColors ); // light position
-				lightingUniformsGroup.add( new THREE.Uniform( pointLightsMax ) ); // light position
+				lightingUniformsGroup.add( dataColors ); // light color
+				lightingUniformsGroup.add( new THREE.Uniform( pointLightsMax ) ); // point light count
 
 				const cameraUniformsGroup = new THREE.UniformsGroup();
 				cameraUniformsGroup.setName( 'ViewData' );
@@ -246,9 +246,9 @@
 
 				// gui
 				const gui = new GUI();
-				gui.add( api, 'count', 1, pointLightsMax ).step( 1 ).onChange( function () {
+				gui.add( params, 'count', 1, pointLightsMax ).step( 1 ).onChange( function () {
 
-					lightingUniformsGroup.uniforms[ 2 ].value = api.count;
+					lightingUniformsGroup.uniforms[ 2 ].value = params.count;
 
 				} );
 
@@ -270,7 +270,7 @@
 				const elapsedTime = clock.getElapsedTime();
 
 				const lights = lightingUniformsGroup.uniforms[ 0 ];
-			
+
 				// Parameters for circular movement
 				const radius = 5; // Smaller radius for individual circular movements
 				const speed = 0.5; // Speed of rotation

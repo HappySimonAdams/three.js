@@ -6,11 +6,9 @@ import { getByteLength } from '../../extras/TextureUtils.js';
 
 function WebGLTextures( _gl, extensions, state, properties, capabilities, utils, info ) {
 
+	// NOTE: 目前，仅有 Oculus Browser 支持 WEBGL_multisampled_render_to_texture 扩展
 	const multisampledRTTExt = extensions.has( 'WEBGL_multisampled_render_to_texture' ) ? extensions.get( 'WEBGL_multisampled_render_to_texture' ) : null;
 	const supportsInvalidateFramebuffer = typeof navigator === 'undefined' ? false : /OculusBrowser/g.test( navigator.userAgent );
-
-	// NOTE: 目前，仅有 Oculus Browser 支持 WEBGL_multisampled_render_to_texture 扩展
-	console.log( 'extension(WEBGL_multisampled_render_to_texture): ', extensions.has( 'WEBGL_multisampled_render_to_texture' ) );
 
 	const _imageDimensions = new Vector2();
 	const _videoTextures = new WeakMap();
@@ -40,7 +38,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		// Use OffscreenCanvas when available. Specially needed in web workers
 
-		console.log( 'createCanvas() useOffscreenCanvas: ', useOffscreenCanvas );
+		console.log( 'createCanvas ~ useOffscreenCanvas: ', useOffscreenCanvas );
 
 		return useOffscreenCanvas ?
 			// eslint-disable-next-line compat/compat
@@ -318,7 +316,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		}
 
-		console.log( `texture${texture.id} disposed` );
+		// console.log( `texture${texture.id} disposed` );
 
 	}
 
@@ -732,15 +730,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				webglTextures[ textureProperties.__cacheKey ].usedTimes --;
 
-				if ( webglTexture.usedTimes > 0 ) {
-
-					console.log( 'texture usedTimes > 1 ', _sources );
-
-				}
-
 				if ( webglTexture.usedTimes === 0 ) {
 
-					console.log( 'delete texture' );
+					console.log( `initTexture() ~ delete webglTexture(name: ${texture.name})` );
 					deleteTexture( texture );
 
 				}
@@ -766,7 +758,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
-		// console.log( `texture${texture.id} forceUpload`, forceUpload );
+		// console.log( `uploadTexture() ~ texture(name: ${texture.name}) forceUpload:`, forceUpload );
 		const source = texture.source;
 
 		state.bindTexture( textureType, textureProperties.__webglTexture, _gl.TEXTURE0 + slot );
@@ -801,6 +793,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			const useTexStorage = ( texture.isVideoTexture !== true );
 			const allocateMemory = ( sourceProperties.__version === undefined ) || ( forceUpload === true );
+			// console.log( `uploadTexture() ~ texture(name: ${texture.name}) allocateMemory:`, allocateMemory );
 			const dataReady = source.dataReady;
 			const levels = getMipLevels( texture, image );
 
@@ -1182,8 +1175,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			if ( textureNeedsGenerateMipmaps( texture ) ) {
 
-				console.log( `texture${texture.id} mipmaps levels: `, levels );
-				console.log( `texture${texture.id} gl generateMipmap` );
+				console.log( `uploadTexture() ~ texture(name: ${texture.name}) mipmaps levels:`, levels );
+				console.log( `uploadTexture() ~ texture(name: ${texture.name}) gl generateMipmap` );
 
 				generateMipmap( textureType );
 

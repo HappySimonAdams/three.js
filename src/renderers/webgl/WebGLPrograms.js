@@ -605,7 +605,7 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 				program = preexistingProgram;
 				++ program.usedTimes;
 
-				console.log( `已编译过的program${program.id}: `, program );
+				// console.log( `acquireProgram() ~ 已编译过的 program(name: ${program.name}, id: ${program.id})` );
 
 				break;
 

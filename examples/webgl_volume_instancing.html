@@ -22,6 +22,7 @@
 		</script>
 
 		<script type="module">
+
 			import * as THREE from 'three';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { VOXLoader, VOXData3DTexture } from 'three/addons/loaders/VOXLoader.js';
@@ -161,14 +162,17 @@
 					}
 				`;
 
+				const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+
 				const loader = new VOXLoader();
 				loader.load( 'models/vox/menger.vox', function ( chunks ) {
+
+					console.log( 'chunks:', chunks );
 
 					for ( let i = 0; i < chunks.length; i ++ ) {
 
 						const chunk = chunks[ i ];
 
-						const geometry = new THREE.BoxGeometry( 1, 1, 1 );
 						const material = new THREE.RawShaderMaterial( {
 							glslVersion: THREE.GLSL3,
 							uniforms: {

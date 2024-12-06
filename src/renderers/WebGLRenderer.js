@@ -1673,7 +1673,7 @@ class WebGLRenderer {
 
 			if ( program !== undefined ) {
 
-				console.log( `material${material.id} program${program.id} 重复获取, 可能是设置了material.needsUpdate=true, 但材质没有任何更改` );
+				// console.log( `getProgram() ~ material(name: ${material.name}) 的 program${program.id} 已被缓存` );
 
 				// early out if program and light state is identical
 
@@ -1960,7 +1960,7 @@ class WebGLRenderer {
 
 			if ( needsProgramChange === true ) {
 
-				console.log( `object${object.id}-${object.name} material${material.id} needsProgramChange: `, needsProgramChange );
+				// console.log( `setProgram() ~ material(name: ${material.name}) needsProgramChange:`, needsProgramChange );
 				program = getProgram( material, scene, object );
 
 			}
@@ -1974,7 +1974,7 @@ class WebGLRenderer {
 
 			if ( state.useProgram( program.program ) ) {
 
-				// console.log( `material${material.id} => program${program.id} gl.useProgram()` );
+				// console.log( `setProgram() ~ material(name: ${material.name}) => program${program.id} gl.useProgram()` );
 				refreshProgram = true;
 				refreshMaterial = true;
 				refreshLights = true;

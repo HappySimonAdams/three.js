@@ -88,9 +88,7 @@
 		<script type="module">
 
 			import * as THREE from 'three';
-
 			import { DisplayP3ColorSpace, DisplayP3ColorSpaceImpl, LinearDisplayP3ColorSpace, LinearDisplayP3ColorSpaceImpl } from 'three/addons/math/ColorSpaces.js';
-
 			import WebGL from 'three/addons/capabilities/WebGL.js';
 
 			let container, camera, renderer, loader;
@@ -223,6 +221,7 @@
 			function onGamutChange( { matches } ) {
 
 				renderer.outputColorSpace = isP3Context && matches ? DisplayP3ColorSpace : THREE.SRGBColorSpace;
+				console.log( 'onGamutChange() ~ renderer.outputColorSpace:', renderer.outputColorSpace );
 
 				textureL.needsUpdate = true;
 				textureR.needsUpdate = true;

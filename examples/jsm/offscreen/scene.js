@@ -83,4 +83,12 @@ function random() {
 
 }
 
-export default init;
+function resize( width, height ) {
+
+	camera.aspect = width / height;
+	camera.updateProjectionMatrix();
+	renderer.setSize( width, height, false );
+
+}
+
+export { init, resize };

@@ -6,42 +6,44 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link type="text/css" rel="stylesheet" href="main.css">
 	</head>
+
 	<script id="vs" type="x-shader/x-vertex">
-	uniform vec2 size;
-	out vec2 vUv;
+		uniform vec2 size;
+		out vec2 vUv;
 
-	void main() {
+		void main() {
 
-		gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
-		// Convert position.xy to 1.0-0.0
+			// Convert position.xy to 1.0-0.0
 
-		vUv.xy = position.xy / size + 0.5;
-		vUv.y = 1.0 - vUv.y; // original data is upside down
+			vUv.xy = position.xy / size + 0.5;
+			vUv.y = 1.0 - vUv.y; // original data is upside down
 
-	}
+		}
 	</script>
 
 	<script id="fs" type="x-shader/x-fragment">
-	precision highp float;
-	precision highp int;
-	precision highp sampler2DArray;
+		precision highp float;
+		precision highp int;
+		precision highp sampler2DArray;
 
-	uniform sampler2DArray diffuse;
-	in vec2 vUv;
-	uniform int depth;
+		uniform sampler2DArray diffuse;
+		in vec2 vUv;
+		uniform int depth;
 
-	out vec4 outColor;
+		out vec4 outColor;
 
-	void main() {
+		void main() {
 
-		vec4 color = texture( diffuse, vec3( vUv, depth ) );
+			vec4 color = texture( diffuse, vec3( vUv, depth ) );
 
-		// lighten a bit
-		outColor = vec4( color.rgb + .2, 1.0 );
+			// lighten a bit
+			outColor = vec4( color.rgb + .2, 1.0 );
 
-	}
+		}
 	</script>
+
 	<body>
 		<div id="info">
 			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - 2D Compressed Texture Array<br />
@@ -61,7 +63,6 @@
 		<script type="module">
 
 			import * as THREE from 'three';
-
 			import Stats from 'three/addons/libs/stats.module.js';
 			import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 
@@ -101,10 +102,13 @@
 
 				ktx2Loader.load( 'textures/spiritedaway.ktx2', function ( texturearray ) {
 
+					console.log( 'spiritedaway ktx2:', texturearray );
+
 					const material = new THREE.ShaderMaterial( {
 						uniforms: {
 							diffuse: { value: texturearray },
-							depth: { value: 55 },
+							// depth: { value: 55 },
+							depth: { value: 0 },
 							size: { value: new THREE.Vector2( planeWidth, planeHeight ) }
 						},
 						vertexShader: document.getElementById( 'vs' ).textContent.trim(),
