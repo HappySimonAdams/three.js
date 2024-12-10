@@ -19,21 +19,21 @@
 	</script>
 
 	<script type="module">
-		import { MallViewer } from './js/MallViewer.js';
+		import { Viewer } from './js/Viewer.js';
 
 		init();
 
 		async function init() {
 
-			const viewer = new MallViewer( {
+			const viewer = new Viewer( {
 				container: document.getElementById( 'container' )
 			} );
-			// viewer.addEventListener( 'pick', ( result ) => {
+			viewer.addEventListener( 'pick', ( result ) => {
 
-			// 	const ids = result.data.map( item => item.id );
-			// 	console.log( ids );
+				const ids = result.data.map( item => item.id );
+				if ( ids.length > 0 )console.log( ids );
 
-			// } );
+			} );
 
 			const scene = viewer.scene;
 			scene.enableFxaa = true;

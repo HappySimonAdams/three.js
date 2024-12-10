@@ -7,6 +7,12 @@ import { Scene } from './Scene.js';
 
 export class Viewer extends EventDispatcher {
 
+	/**
+	 * @param {object} options
+	 * @param {HTMLElement} options.container
+	 * @param {boolean} [options.useLogDepth] 是否使用log深度。默认为false
+	 * @param {string} [options.mode] 模式。可选值：'2d'、'3d'。默认为'3d'
+	 */
 	constructor( options ) {
 
 		super();

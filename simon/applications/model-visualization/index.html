@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>模型资产可视化</title>
+	<link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+	<div id="container"></div>
+
+	<!-- NOTE: 需要设置 imports three，因为 examples/jsm 模块依赖 three -->
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../../../build/three.module.js"
+			}
+		}
+	</script>
+
+	<script type="module">
+		init();
+
+		async function init() {
+
+			const viewer = new MallViewer( {
+				container: document.getElementById( 'container' )
+			} );
+			// viewer.addEventListener( 'pick', ( result ) => {
+
+			// 	const ids = result.data.map( item => item.id );
+			// 	console.log( ids );
+
+			// } );
+
+			const scene = viewer.scene;
+			scene.enableFxaa = true;
+			scene.debugShowStats = true;
+			scene.debugShowAxes = true;
+
+			await viewer.loadData( './examples/shopes1.json' );
+
+			window.viewer = viewer;
+
+		}
+
+	</script>
+</body>
+</html>

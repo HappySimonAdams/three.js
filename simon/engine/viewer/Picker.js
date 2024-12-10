@@ -17,6 +17,29 @@ export class Picker {
 
 	}
 
+	rayPickObject( options ) {
+
+		const { container, camera } = this.scene;
+		const { x, y, selectObject = undefined, threshold = 1 } = options;
+
+		this._mouse.x = ( x / container.clientWidth ) * 2 - 1;
+		this._mouse.y = - ( y / container.clientHeight ) * 2 + 1;
+		this._raycaster.setFromCamera( this._mouse, camera );
+		this._raycaster.params.Points.threshold = threshold;
+		this._raycaster.params.Line.threshold = threshold;
+
+		selectObject = selectObject || this.scene.children;
+
+		if ( Array.isArray( selectObject ) ) {
+
+			return this._raycaster.intersectObjects( selectObject, true );
+
+		}
+
+		return this._raycaster.intersectObject( selectObject, true );
+
+	}
+
 	/**
      * 拾取场景坐标 (非图元坐标). CPU拾取
      */

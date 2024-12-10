@@ -1,10 +1,13 @@
 import { Shape, Vector3 } from '../../../../build/three.module.js';
-import { Viewer } from '../../../engine/index.js';
+import { Viewer as ViewerCore } from '../../../engine/index.js';
 import { Interacter } from './Interacter.js';
 import { ShopePrimitive } from './ShopePrimitive.js';
 import { ShopePrimitiveCollection } from './ShopePrimitiveCollection.js';
 
-export class MallViewer extends Viewer {
+/**
+ * 商场可视化Viewer
+ */
+export class Viewer extends ViewerCore {
 
 	constructor( options ) {
 
