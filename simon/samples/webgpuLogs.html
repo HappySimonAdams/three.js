@@ -15,7 +15,16 @@
 	</script>
 
 	<script type="module">
+		import { WebGPURenderer } from 'three';
+
+		const renderer = new WebGPURenderer();
+		renderer.setAnimationLoop( () => {} );
+
+		const backend = renderer.backend;
+
 		console.log( 'getPreferredCanvasFormat:', navigator.gpu.getPreferredCanvasFormat() );
+		console.log( 'WebGPUBackend parameters:', backend.parameters );
+		console.log( backend );
 	</script>
 </body>
 </html>

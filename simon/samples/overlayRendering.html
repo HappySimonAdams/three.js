@@ -3,38 +3,38 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>colorWrite sample</title>
-	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+	<title>覆盖渲染</title>
+	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
 </head>
 <body>
 	<script type="importmap">
 		{
 			"imports": {
-				"three": "../src/Three.js",
-				"three/addons/": "../examples/jsm/"
+				"three": "../../src/Three.js",
+				"three/addons/": "../../examples/jsm/"
 			}
 		}
 	</script>
 
 	<script type="module">
 		import {
-			// OrthographicCamera,
+			AxesHelper,
+			BufferGeometry,
+			BufferAttribute,
+			LineBasicMaterial,
+			LineSegments,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
-			AxesHelper,
-			BoxGeometry,
-			MeshBasicMaterial,
-			Mesh,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
 
 		let renderer, scene, camera, controls, stats;
-		let mesh, material;
 		let isDirty = true;
 		let lastTime = performance.now();
+		let line;
 
 		const width = window.innerWidth;
 		const height = window.innerHeight;
@@ -53,13 +53,12 @@
 		function initViewer() {
 
 			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
-			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 1000 );
-			camera.position.set( 3, 1, 5 );
+			camera.position.set( 0, 10, 30 );
 
 			scene = new Scene();
 			scene.matrixAutoUpdate = false;
 			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			scene.matrixWorldAutoUpdate = false;
+			// scene.matrixWorldAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
@@ -74,7 +73,6 @@
 
 			controls = new OrbitControls( camera, renderer.domElement );
 			controls.target.set( 0, 0, 0 );
-			// controls.update();
 
 			stats = new Stats();
 			document.body.appendChild( stats.dom );
@@ -86,25 +84,24 @@
 
 		function initObjects() {
 
-			const geometry = new BoxGeometry();
-			mesh = new Mesh( geometry, new MeshBasicMaterial( { color: 0x009999 } ) );
-			mesh.name = 'mesh';
-			mesh.matrixAutoUpdate = false;
-			mesh.renderOrder = 2;
-			scene.add( mesh );
+			const positions = new Float32Array( [
+				0, 0, 0,
+				2, 0, 0,
+			] );
+			const colors = new Float32Array( [
+				1, 0, 0,
+				1, 0, 0,
+			] );
 
-			/* NOTE: 必须先渲染不可见的遮挡对象(即renderOrder设置为1)，才能遮挡后面的物体 */
-			material = new MeshBasicMaterial( { color: 0x990099, colorWrite: false } );
-			const mesh2 = new Mesh( geometry, material );
-			mesh2.name = 'mesh2';
-			mesh2.matrixAutoUpdate = false;
-			mesh2.position.z = 2;
-			mesh2.scale.setScalar( 2 );
-			mesh2.updateMatrix();
-			/* NOTE: 由于scene.matrixWorldAutoUpdate为false，需要手动更新世界矩阵 */
-			mesh2.updateMatrixWorld();
-			// mesh2.renderOrder = 1;
-			scene.add( mesh2 );
+			const geometry = new BufferGeometry()
+				.setAttribute( 'position', new BufferAttribute( positions, 3 ) )
+				.setAttribute( 'color', new BufferAttribute( colors, 3 ) );
+
+			const material = new LineBasicMaterial( {
+				vertexColors: true,
+			} );
+			line = new LineSegments( geometry, material );
+			scene.add( line );
 
 		}
 
@@ -112,14 +109,55 @@
 
 			const gui = new GUI();
 			const gui_options = {
-				'material.coloWrite': material.colorWrite,
+				'add': add,
+				'remove': remove,
 			};
-			gui.add( gui_options, 'material.coloWrite' ).onChange( ( value ) => {
+			gui.add( gui_options, 'add' );
+			gui.add( gui_options, 'remove' );
 
-				material.colorWrite = value;
+			const colorArray = [
+				[ 0, 1, 0 ],
+				[ 0, 0, 1 ],
+				[ 1, 1, 0 ],
+				[ 1, 0, 1 ],
+				[ 0, 1, 1 ],
+			];
+			let cIndex = 0;
+
+			function add() {
+
+				const { position, color } = line.geometry.attributes;
+				const newPositions = new Float32Array( [
+					...position.array,
+					0, 0, 0,
+					2, 0, 0,
+				] );
+				const c = colorArray[ cIndex ++ % colorArray.length ];
+				const newColors = new Float32Array( [
+					...color.array,
+					...c,
+					...c,
+				] );
+				line.geometry
+					.setAttribute( 'position', new BufferAttribute( newPositions, 3 ) )
+					.setAttribute( 'color', new BufferAttribute( newColors, 3 ) );
 				isDirty = true;
 
-			} );
+			}
+
+			function remove() {
+
+				const { position, color } = line.geometry.attributes;
+				if ( position.array.length <= 6 ) return;
+
+				const newPositions = position.array.slice( 0, position.array.length - 6 );
+				const newColors = color.array.slice( 0, color.array.length - 6 );
+				line.geometry
+					.setAttribute( 'position', new BufferAttribute( newPositions, 3 ) )
+					.setAttribute( 'color', new BufferAttribute( newColors, 3 ) );
+				isDirty = true;
+
+			}
 
 		}
 
@@ -128,10 +166,6 @@
 			const w = window.innerWidth;
 			const h = window.innerHeight;
 			camera.aspect = w / h;
-			// camera.left = - w / 2;
-			// camera.right = w / 2;
-			// camera.top = h / 2;
-			// camera.bottom = - h / 2;
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
 			isDirty = true;
