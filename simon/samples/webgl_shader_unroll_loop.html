@@ -3,22 +3,21 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>unrollLoop sample</title>
-	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+	<title>unroll loop</title>
+	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
 </head>
 <body>
 	<script type="importmap">
 		{
 			"imports": {
-				"three": "../src/Three.js",
-				"three/addons/": "../examples/jsm/"
+				"three": "../../src/Three.js",
+				"three/addons/": "../../examples/jsm/"
 			}
 		}
 	</script>
 
 	<script type="module">
 		import {
-			// OrthographicCamera,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
@@ -26,7 +25,6 @@
 			BufferGeometry,
 			Float32BufferAttribute,
 			Uint8BufferAttribute,
-			// ShaderMaterial,
 			RawShaderMaterial,
 			Mesh,
 			GLSL3,
@@ -53,23 +51,20 @@
 			initViewer();
 			initObjects();
 			initGUI();
-		
+
 		}
 
 		function initViewer() {
 
 			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
-			// camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 1000 );
 			camera.position.set( 0, 1, 3 );
 
 			scene = new Scene();
 			scene.matrixAutoUpdate = false;
-			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			scene.matrixWorldAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
-			// scene.add( axes );
+			scene.add( axes );
 
 			renderer = new WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0x333333 );
@@ -149,8 +144,7 @@ void main() {
 
 	fragColor = vec4(color, vColor.a);
 }`;
-		
-			/* NOTE: 内置的uniforms和attributes的定义不会自动添加到GLSL shader代码中 */
+
 			material = new RawShaderMaterial( {
 				glslVersion: GLSL3,
 				vertexShader,
@@ -158,7 +152,7 @@ void main() {
 			} );
 			material.fragmentShader = fragmentShader.replace( /LOOP_COUNT/g, loopCount );
 			// console.log( material.fragmentShader );
-		
+
 			const mesh = new Mesh( geometry, material );
 			mesh.matrixAutoUpdate = false;
 			mesh.updateMatrix();
@@ -190,18 +184,14 @@ void main() {
 			const w = window.innerWidth;
 			const h = window.innerHeight;
 			camera.aspect = w / h;
-			// camera.left = - w / 2;
-			// camera.right = w / 2;
-			// camera.top = h / 2;
-			// camera.bottom = - h / 2;
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
 			isDirty = true;
-		
+
 		}
 
 		function render() {
-		
+
 			requestAnimationFrame( render );
 
 			const now = performance.now();
@@ -209,7 +199,7 @@ void main() {
 			lastTime = now;
 
 			stats.begin();
-		
+
 			if ( isDirty ) {
 
 				isDirty = false;

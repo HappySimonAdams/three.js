@@ -3,35 +3,44 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>lineDithering sample</title>
-	<link type="text/css" rel="stylesheet" href="../examples/main.css">
+	<title>字体线形渲染</title>
+	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
 </head>
 <body>
 	<script type="importmap">
 		{
 			"imports": {
-				"three": "../src/Three.js",
-				"three/addons/": "../examples/jsm/"
+				"three": "../../src/Three.js",
+				"three/addons/": "../../examples/jsm/"
 			}
 		}
 	</script>
 
 	<script type="module">
 		import {
-			OrthographicCamera,
-			Scene,
-			WebGLRenderer,
 			AxesHelper,
-			GridHelper,
-			AdditiveBlending,
+			BufferGeometry,
+			BufferAttribute,
+			CubicBezierCurve3,
+			LineBasicMaterial,
+			Line,
+			LineSegments,
+			PerspectiveCamera,
+			QuadraticBezierCurve3,
+			Scene,
+			Vector3,
+			WebGLRenderer,
 		} from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
+		import { SHXFontLoader, SHXFont } from './libs/loaders/SHXFontLoader.js';
 
 		let renderer, scene, camera, controls, stats;
 		let isDirty = true;
 		let lastTime = performance.now();
+		let font;
+		let line;
 
 		const width = window.innerWidth;
 		const height = window.innerHeight;
@@ -44,25 +53,24 @@
 			initViewer();
 			initObjects();
 			initGUI();
-		
+
 		}
 
 		function initViewer() {
 
-			camera = new OrthographicCamera( - width / 2, width / 2, height / 2, - height / 2, 0.1, 2000 );
-			camera.position.set( 0, 1000, 0 );
+			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
+			camera.position.set( 0, 10, 30 );
 
 			scene = new Scene();
 			scene.matrixAutoUpdate = false;
 			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			scene.matrixWorldAutoUpdate = false;
+			// scene.matrixWorldAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
-			// scene.add( axes );
+			scene.add( axes );
 
-			// NOTE: 抗锯齿(MSAA)会造成线条抖动，关闭抗锯齿可减小抖动，但不能完全避免抖动
-			renderer = new WebGLRenderer( /* { antialias: true } */ );
+			renderer = new WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0x333333 );
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( width, height );
@@ -71,8 +79,6 @@
 
 			controls = new OrbitControls( camera, renderer.domElement );
 			controls.target.set( 0, 0, 0 );
-			controls.enableRotate = false;
-			// controls.update();
 
 			stats = new Stats();
 			document.body.appendChild( stats.dom );
@@ -82,12 +88,27 @@
 
 		}
 
-		function initObjects() {
+		async function initObjects() {
 
-			const grid = new GridHelper( 2000, 100 );
-			grid.matrixAutoUpdate = false;
-			// grid.material.blending = AdditiveBlending;
-			scene.add( grid );
+			// const url = './assets/fonts/shx/1JADID.shx';
+			// const url = './assets/fonts/shx/a5.shx';
+			const url = './assets/fonts/shx/gbenor.shx';
+			// const url = './assets/fonts/shx/tssdchn.shx';
+			new SHXFontLoader().load( url, () => {
+
+			}, undefined, ( err ) => console.error( '加载字体失败:', err ) );
+
+			// const geometry = new BufferGeometry()
+			// 	.setAttribute( 'position', new BufferAttribute( new Float32Array( positions ), 3 ) );
+
+			// const material = new LineBasicMaterial( {
+			// 	color: 0xff0000,
+			// } );
+			// line = new Line( geometry, material );
+			// // line = new LineSegments( geometry, material );
+			// scene.add( line );
+
+			// isDirty = true;
 
 		}
 
@@ -96,8 +117,7 @@
 			// const gui = new GUI();
 			// const gui_options = {
 			// };
-			// gui.add( gui_options, 'translate' );
-			// gui.add( gui_options, 'dispose' );
+			// gui.add( gui_options, '' );
 
 		}
 
@@ -105,18 +125,15 @@
 
 			const w = window.innerWidth;
 			const h = window.innerHeight;
-			camera.left = - w / 2;
-			camera.right = w / 2;
-			camera.top = h / 2;
-			camera.bottom = - h / 2;
+			camera.aspect = w / h;
 			camera.updateProjectionMatrix();
 			renderer.setSize( w, h );
 			isDirty = true;
-		
+
 		}
 
 		function render() {
-		
+
 			requestAnimationFrame( render );
 
 			const now = performance.now();
@@ -124,7 +141,7 @@
 			lastTime = now;
 
 			stats.begin();
-		
+
 			if ( isDirty ) {
 
 				isDirty = false;

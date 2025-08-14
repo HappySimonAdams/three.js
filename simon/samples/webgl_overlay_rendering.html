@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<title>粗线</title>
+	<title>overlay rendering</title>
 	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
 </head>
 <body>
@@ -18,14 +18,15 @@
 
 	<script type="module">
 		import {
+			AxesHelper,
+			BufferGeometry,
+			BufferAttribute,
+			LineBasicMaterial,
+			LineSegments,
 			PerspectiveCamera,
 			Scene,
 			WebGLRenderer,
-			AxesHelper,
 		} from 'three';
-		import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
-		import { Line2 } from 'three/addons/lines/Line2.js';
-		import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import Stats from 'three/addons/libs/stats.module.js';
@@ -56,8 +57,6 @@
 
 			scene = new Scene();
 			scene.matrixAutoUpdate = false;
-			/* NOTE: 场景中的所有物体需要手动调用 updateMatrixWorld() */
-			// scene.matrixWorldAutoUpdate = false;
 
 			const axes = new AxesHelper( 10 );
 			axes.matrixAutoUpdate = false;
@@ -83,12 +82,23 @@
 
 		function initObjects() {
 
-			const geometry = new LineGeometry();
-			geometry.setPositions( [ 0, 0, 0, 10, 0, 0 ] );
-			line = new Line2( geometry, new LineMaterial( {
-				color: 0x00ff00,
-				linewidth: 4,
-			} ) );
+			const positions = new Float32Array( [
+				0, 0, 0,
+				2, 0, 0,
+			] );
+			const colors = new Float32Array( [
+				1, 0, 0,
+				1, 0, 0,
+			] );
+
+			const geometry = new BufferGeometry()
+				.setAttribute( 'position', new BufferAttribute( positions, 3 ) )
+				.setAttribute( 'color', new BufferAttribute( colors, 3 ) );
+
+			const material = new LineBasicMaterial( {
+				vertexColors: true,
+			} );
+			line = new LineSegments( geometry, material );
 			scene.add( line );
 
 		}
@@ -97,16 +107,55 @@
 
 			const gui = new GUI();
 			const gui_options = {
-				'setPositions': () => {
-
-					line.geometry.dispose();
-					line.geometry.setPositions( [ 0, 0, 0, 10, 0, 0, 10, 5, 0 ] );
-					// line.computeLineDistances(); // for dashed line
-					isDirty = true;
-
-				},
+				'add': add,
+				'remove': remove,
 			};
-			gui.add( gui_options, 'setPositions' );
+			gui.add( gui_options, 'add' );
+			gui.add( gui_options, 'remove' );
+
+			const colorArray = [
+				[ 0, 1, 0 ],
+				[ 0, 0, 1 ],
+				[ 1, 1, 0 ],
+				[ 1, 0, 1 ],
+				[ 0, 1, 1 ],
+			];
+			let cIndex = 0;
+
+			function add() {
+
+				const { position, color } = line.geometry.attributes;
+				const newPositions = new Float32Array( [
+					...position.array,
+					0, 0, 0,
+					2, 0, 0,
+				] );
+				const c = colorArray[ cIndex ++ % colorArray.length ];
+				const newColors = new Float32Array( [
+					...color.array,
+					...c,
+					...c,
+				] );
+				line.geometry
+					.setAttribute( 'position', new BufferAttribute( newPositions, 3 ) )
+					.setAttribute( 'color', new BufferAttribute( newColors, 3 ) );
+				isDirty = true;
+
+			}
+
+			function remove() {
+
+				const { position, color } = line.geometry.attributes;
+				if ( position.array.length <= 6 ) return;
+
+				const newPositions = position.array.slice( 0, position.array.length - 6 );
+				const newColors = color.array.slice( 0, color.array.length - 6 );
+				line.geometry
+					.setAttribute( 'position', new BufferAttribute( newPositions, 3 ) )
+					.setAttribute( 'color', new BufferAttribute( newColors, 3 ) );
+				isDirty = true;
+
+			}
 
 		}
 

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>line fat</title>
+	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../../src/Three.js",
+				"three/addons/": "../../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			PerspectiveCamera,
+			Scene,
+			WebGLRenderer,
+			AxesHelper,
+			Vector3,
+		} from 'three';
+		import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+		import { Line2 } from 'three/addons/lines/Line2.js';
+		import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+
+		let renderer, scene, camera, controls, stats;
+		let isDirty = true;
+		let lastTime = performance.now();
+		let line;
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		init();
+		render();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
+			camera.position.set( 0, 10, 30 );
+
+			scene = new Scene();
+			scene.matrixAutoUpdate = false;
+
+			const axes = new AxesHelper( 10 );
+			axes.matrixAutoUpdate = false;
+			scene.add( axes );
+
+			renderer = new WebGLRenderer( { antialias: true } );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function initObjects() {
+
+			const geometry = new LineGeometry();
+			geometry.setPositions( [ 1, 1, 1, 2, 1, 1 ] );
+			// 如果后续需要调用 geometry.dispose(), 那么基本的顶点属性(position, uv, index)数据不能删除
+			// geometry.attributes.position.onUpload( disposeArray );
+			// geometry.attributes.uv.onUpload( disposeArray );
+			// geometry.index.onUpload( disposeArray );
+			geometry.attributes.instanceStart.data.onUpload( disposeArray );
+
+			line = new Line2( geometry, new LineMaterial( {
+				color: 0x00ff00,
+				linewidth: 4,
+			} ) );
+			scene.add( line );
+
+		}
+
+		function disposeArray() {
+
+			this.array = null;
+
+		}
+
+		function getLinePositions( array ) {
+
+			const length = array.length - 3;
+			const points = new Float32Array( 2 * length );
+
+			for ( let i = 0; i < length; i += 3 ) {
+
+				points[ 2 * i ] = array[ i ];
+				points[ 2 * i + 1 ] = array[ i + 1 ];
+				points[ 2 * i + 2 ] = array[ i + 2 ];
+
+				points[ 2 * i + 3 ] = array[ i + 3 ];
+				points[ 2 * i + 4 ] = array[ i + 4 ];
+				points[ 2 * i + 5 ] = array[ i + 5 ];
+
+			}
+
+			return points;
+
+		}
+
+		const _start = new Vector3();
+		const _end = new Vector3();
+
+		function getLineDistances( geometry ) {
+
+			const instanceStart = geometry.attributes.instanceStart;
+			const instanceEnd = geometry.attributes.instanceEnd;
+			const lineDistances = new Float32Array( 2 * instanceStart.count );
+
+			for ( let i = 0, j = 0, l = instanceStart.count; i < l; i ++, j += 2 ) {
+
+				_start.fromBufferAttribute( instanceStart, i );
+				_end.fromBufferAttribute( instanceEnd, i );
+
+				lineDistances[ j ] = ( j === 0 ) ? 0 : lineDistances[ j - 1 ];
+				lineDistances[ j + 1 ] = lineDistances[ j ] + _start.distanceTo( _end );
+
+			}
+
+			return lineDistances;
+
+		}
+
+		function initGUI() {
+
+			const gui = new GUI();
+			const gui_options = {
+				'updatePositions': () => {
+
+					// line.geometry.setPositions( [ 1, 1, 1, 3, 1, 1 ] );
+					// line.computeLineDistances(); // for dashed line
+					// line.geometry.attributes.instanceStart.data.onUpload( disposeArray );
+					// line.geometry.attributes.instanceDistanceStart.data.onUpload( disposeArray ); // for dashed line
+
+					line.geometry.attributes.instanceStart.data.array = getLinePositions( [ 1, 1, 1, 3 + Math.random() * 10, 1, 1 ] );
+					line.geometry.attributes.instanceStart.data.needsUpdate = true;
+					line.geometry.attributes.instanceStart.data.onUpload( disposeArray );
+
+					isDirty = true;
+
+				},
+				'setPositions': () => {
+
+					// NOTE: 顶点数量变化时需要调用 geometry.dispose()
+
+					// line.geometry.dispose();
+					// line.geometry.setPositions( [ 1, 1, 1, 2, 1, 1, 2, 2, 1 ] );
+					// line.computeLineDistances(); // for dashed line
+					// line.geometry.attributes.instanceStart.data.onUpload( disposeArray );
+					// line.geometry.attributes.instanceDistanceStart.data.onUpload( disposeArray ); // for dashed line
+
+					line.geometry.dispose();
+					const instanceBuffer = line.geometry.attributes.instanceStart.data;
+					instanceBuffer.array = getLinePositions( [ 1, 1, 1, 2, 1, 1, 2, 2 + Math.random() * 10, 1 ] );
+					instanceBuffer.count = instanceBuffer.array.length / instanceBuffer.stride;
+					instanceBuffer.needsUpdate = true;
+					instanceBuffer.onUpload( disposeArray );
+					line.geometry.instanceCount = instanceBuffer.count;
+					// line.geometry.computeBoundingBox();
+					// line.geometry.computeBoundingSphere();
+					/* for dashed line */
+					if ( line.geometry.attributes.instanceDistanceStart ) {
+
+						const instanceDistanceBuffer = line.geometry.attributes.instanceDistanceStart.data;
+						instanceDistanceBuffer.array = getLineDistances( line.geometry );
+						instanceDistanceBuffer.count = instanceDistanceBuffer.array.length / instanceDistanceBuffer.stride;
+						instanceDistanceBuffer.needsUpdate = true;
+						instanceDistanceBuffer.onUpload( disposeArray );
+
+					}
+
+					isDirty = true;
+
+				},
+			};
+			gui.add( gui_options, 'updatePositions' ).name( '更新顶点(数量不变)' );
+			gui.add( gui_options, 'setPositions' ).name( '更新顶点(数量变化)' );
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		function render() {
+
+			requestAnimationFrame( render );
+
+			const now = performance.now();
+			if ( now - lastTime < 10 ) return;
+			lastTime = now;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>
