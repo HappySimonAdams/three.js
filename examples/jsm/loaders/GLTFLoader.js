@@ -2379,7 +2379,7 @@ function addUnknownExtensionsToUserData( knownExtensions, object, objectDef ) {
 /**
  *
  * @private
- * @param {Object3D|Material|BufferGeometry|Object} object
+ * @param {Object3D|Material|BufferGeometry|Object|AnimationClip} object
  * @param {GLTF.definition} gltfDef
  */
 function assignExtrasToUserData( object, gltfDef ) {
@@ -2946,7 +2946,7 @@ class GLTFParser {
 	 * @private
 	 * @param {string} type
 	 * @param {number} index
-	 * @return {Promise<Object3D|Material|THREE.Texture|AnimationClip|ArrayBuffer|Object>}
+	 * @return {Promise<Object3D|Material|Texture|AnimationClip|ArrayBuffer|Object>}
 	 */
 	getDependency( type, index ) {
 
@@ -3286,7 +3286,7 @@ class GLTFParser {
 	 *
 	 * @private
 	 * @param {number} textureIndex
-	 * @return {Promise<THREE.Texture|null>}
+	 * @return {Promise<?Texture>}
 	 */
 	loadTexture( textureIndex ) {
 
@@ -4024,7 +4024,7 @@ class GLTFParser {
 	 *
 	 * @private
 	 * @param {number} cameraIndex
-	 * @return {Promise<THREE.Camera>}
+	 * @return {Promise<Camera>|undefined}
 	 */
 	loadCamera( cameraIndex ) {
 
@@ -4217,7 +4217,11 @@ class GLTFParser {
 
 			}
 
-			return new AnimationClip( animationName, undefined, tracks );
+			const animation = new AnimationClip( animationName, undefined, tracks );
+
+			assignExtrasToUserData( animation, animationDef );
+
+			return animation;
 
 		} );
 
