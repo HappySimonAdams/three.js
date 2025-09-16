@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>webgpu base</title>
+	<link type="text/css" rel="stylesheet" href="../../examples/main.css">
+</head>
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../../src/Three.WebGPU.js",
+				"three/addons/": "../../examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import {
+			AxesHelper,
+			BoxGeometry,
+			Mesh,
+			MeshBasicMaterial,
+			PerspectiveCamera,
+			Scene,
+			WebGPURenderer,
+		} from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		// import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import Stats from 'three/addons/libs/stats.module.js';
+		import { releaseGeometryMemory } from './common/releaseGeometryMemory.js';
+
+		let renderer, scene, camera, controls, stats;
+		let mesh;
+		let isDirty = true;
+		let lastTime = performance.now();
+
+		const width = window.innerWidth;
+		const height = window.innerHeight;
+
+		init();
+
+		function init() {
+
+			initViewer();
+			initObjects();
+			// initGUI();
+
+		}
+
+		function initViewer() {
+
+			camera = new PerspectiveCamera( 45, width / height, 0.1, 1000 );
+			camera.position.set( 0, 10, 30 );
+
+			scene = new Scene();
+			scene.matrixAutoUpdate = false;
+
+			const axes = new AxesHelper( 10 );
+			axes.matrixAutoUpdate = false;
+			// scene.add( axes );
+
+			renderer = new WebGPURenderer( {
+				antialias: true,
+				// trackTimestamp: true,
+			} );
+			renderer.setClearColor( 0x333333 );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( width, height );
+			renderer.setAnimationLoop( tick );
+			renderer.domElement.style.touchAction = 'none';
+			document.body.appendChild( renderer.domElement );
+
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.target.set( 0, 0, 0 );
+
+			stats = new Stats();
+			document.body.appendChild( stats.dom );
+
+			controls.addEventListener( 'change', () => isDirty = true );
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		// function disposeArray() {
+
+		// 	this.array = null;
+
+		// }
+
+		function initObjects() {
+
+			const geometry = new BoxGeometry();
+			// NOTE: WebGPURenderer 暂未支持 BufferAttribute.onUpload()
+			// geometry.attributes.position.onUpload( disposeArray );
+			// geometry.attributes.normal.onUpload( disposeArray );
+			// geometry.attributes.uv.onUpload( disposeArray );
+			// geometry.index.onUpload( disposeArray );
+
+			mesh = new Mesh( geometry, new MeshBasicMaterial() );
+			// scene.add( mesh );
+
+			scene.onAfterRender = () => {
+
+				if ( ! mesh.geometry.userData.isReleasedMemory ) {
+
+					releaseGeometryMemory( mesh.geometry );
+					mesh.geometry.userData.isReleasedMemory = true;
+					console.log( mesh.geometry );
+
+				}
+
+			};
+
+		}
+
+		function onWindowResize() {
+
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			camera.aspect = w / h;
+			camera.updateProjectionMatrix();
+			renderer.setSize( w, h );
+			isDirty = true;
+
+		}
+
+		async function tick( time ) {
+
+			if ( time - lastTime < 10 ) return;
+			lastTime = time;
+
+			stats.begin();
+
+			if ( isDirty ) {
+
+				isDirty = false;
+				renderer.render( scene, camera );
+
+			}
+
+			stats.end();
+
+		}
+
+		window.renderer = renderer;
+		window.scene = scene;
+	</script>
+</body>
+</html>

@@ -157,6 +157,7 @@ class WebGPUBackend extends Backend {
 
 	/**
 	 * Initializes the backend so it is ready for usage.
+	 * 创建 GPUAdapter, GPUDevice, GPUCanvasContext, updateSize
 	 *
 	 * @async
 	 * @param {Renderer} renderer - The renderer.
