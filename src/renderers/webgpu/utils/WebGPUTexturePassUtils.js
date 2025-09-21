@@ -300,6 +300,9 @@ fn main( @location( 0 ) vTex : vec2<f32> ) -> @location( 0 ) vec4<f32> {
 
 		this.device.queue.submit( [ commandEncoder.finish() ] );
 
+		// 通知 WebGPU: 这个纹理对象在 JavaScript 代码中不会再被使用
+		// 但实际的 GPU 内存释放会延迟到 GPU 真正完成所有引用该资源的命令之后
+		// 这种机制允许开发者尽早释放资源引用，同时保证 GPU 执行的正确性
 		tempTexture.destroy();
 
 	}

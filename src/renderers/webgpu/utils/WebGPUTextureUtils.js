@@ -107,6 +107,11 @@ class WebGPUTextureUtils {
 	/**
 	 * Creates a GPU sampler for the given texture.
 	 *
+	 * 在 WebGPUBackend 中缓存 texture 相关数据
+	 * {
+	 *     sampler: GPUSampler;
+	 * }
+	 *
 	 * @param {Texture} texture - The texture to create the sampler for.
 	 */
 	createSampler( texture ) {
@@ -172,6 +177,15 @@ class WebGPUTextureUtils {
 
 	/**
 	 * Defines a texture on the GPU for the given texture object.
+	 *
+	 * 在 WebGPUBackend 中缓存 texture 相关数据
+	 * {
+     *     format: GPUTextureFormat;
+     *     texture: GPUTexture;
+     *     msaaTexture?: GPUTexture;
+     *     initialized: boolean;
+     *     textureDescriptorGPU: GPUTextureDescriptor;
+	 * }
 	 *
 	 * @param {Texture} texture - The texture.
 	 * @param {Object} [options={}] - Optional configuration parameter.

@@ -204,6 +204,7 @@ class Nodes extends DataMap {
 				nodeBuilder.clippingContext = renderObject.clippingContext;
 				if ( this.renderer.getOutputRenderTarget() ? this.renderer.getOutputRenderTarget().multiview : false ) {
 
+					// GLSLNodeBuilder.enableMultiview()
 					nodeBuilder.enableMultiview();
 
 				}

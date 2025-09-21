@@ -102,7 +102,7 @@ class Renderer {
 		 *
 		 * @type {HTMLCanvasElement|OffscreenCanvas}
 		 */
-		this.domElement = backend.getDomElement();
+		this.domElement = backend.getDomElement(); // 内部创建 canvas, 此时的宽高是默认值 (300*150)
 
 		/**
 		 * A reference to the current backend.
@@ -1280,6 +1280,7 @@ class Renderer {
 
 		if ( this._isDeviceLost === true ) return;
 
+		// 默认会创建 frameBufferTarget
 		const frameBufferTarget = useFrameBufferTarget ? this._getFrameBufferTarget() : null;
 
 		// preserve render tree
@@ -1317,6 +1318,8 @@ class Renderer {
 
 		//
 
+		// 创建并缓存 renderContext
+		// 基于渲染状态的缓存策略: 通过 renderTarget 的相关参数组合成 key 对 ChainMap 进行分组管理；相同 renderTarget 的场景可以共享缓存结构
 		const renderContext = this._renderContexts.get( scene, camera, renderTarget );
 
 		this._currentRenderContext = renderContext;
@@ -1335,6 +1338,7 @@ class Renderer {
 		const coordinateSystem = this.coordinateSystem;
 		const xr = this.xr;
 
+		// 相机 WebGL 坐标系转换为 WebGPU 坐标系
 		if ( camera.coordinateSystem !== coordinateSystem && xr.isPresenting === false ) {
 
 			camera.coordinateSystem = coordinateSystem;
@@ -1410,22 +1414,27 @@ class Renderer {
 
 		const frustum = camera.isArrayCamera ? _frustumArray : _frustum;
 
+		// 更新视锥体，用于视锥剔除
 		if ( ! camera.isArrayCamera ) {
 
+			// 变换到NDC空间的矩阵. @see Vector3.project()
 			_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
 			frustum.setFromProjectionMatrix( _projScreenMatrix, camera.coordinateSystem, camera.reversedDepth );
 
 		}
 
+		// 创建并缓存 renderList
 		const renderList = this._renderLists.get( scene, camera );
 		renderList.begin();
 
 		this._projectObject( scene, camera, 0, renderList, renderContext.clippingContext );
 
+		// 清除列表中非活动 renderItem 的引用
 		renderList.finish();
 
 		if ( this.sortObjects === true ) {
 
+			// 不透明对象与透明对象的渲染排序
 			renderList.sort( this._opaqueSort, this._transparentSort );
 
 		}
@@ -1434,8 +1443,10 @@ class Renderer {
 
 		if ( renderTarget !== null ) {
 
+			// 设置 renderTarget 对应的纹理相关的缓存数据
 			this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
 
+			// 获取 renderTarget 对应的缓存数据
 			const renderTargetData = this._textures.get( renderTarget );
 
 			renderContext.textures = renderTargetData.textures;
@@ -1481,6 +1492,7 @@ class Renderer {
 
 		//
 
+		// 设置 renderContext 相关属性：clearColorValue, depthClearValue, stencilClearValue, clearColor, clearDepth, clearStencil
 		this._background.update( sceneRef, renderList, renderContext );
 
 		//
@@ -2657,6 +2669,7 @@ class Renderer {
 
 			} else if ( object.isLOD ) {
 
+				// 设置每个level对象的可见性（根据到相机的距离）
 				if ( object.autoUpdate === true ) object.update( camera );
 
 			} else if ( object.isLight ) {
@@ -2671,6 +2684,7 @@ class Renderer {
 
 					if ( this.sortObjects === true ) {
 
+						// 计算object在NDC空间下的z值作为渲染排序因子 (离相机越远z越大)
 						_vector4.setFromMatrixPosition( object.matrixWorld ).applyMatrix4( _projScreenMatrix );
 
 					}
@@ -2701,6 +2715,7 @@ class Renderer {
 
 						if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
 
+						// 计算object包围盒中心点在NDC空间下的z值作为渲染排序因子 (离相机越远z越大). 正交相机与透视相机计算出来的z不同
 						_vector4
 							.copy( geometry.boundingSphere.center )
 							.applyMatrix4( object.matrixWorld )

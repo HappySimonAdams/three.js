@@ -53,6 +53,20 @@ class Textures extends DataMap {
 	 * Updates the given render target. Based on the given render target configuration,
 	 * it updates the texture states representing the attachments of the framebuffer.
 	 *
+	 * 缓存 renderTarget 相关数据
+	 * {
+	 *     depthTextureMips: Record<number, DepthTexture>;
+     *     width: number;
+     *     height: number;
+     *     textures: Texture[];
+     *     depthTexture: DepthTexture | null;
+     *     depth: boolean;
+     *     stencil: boolean;
+     *     sampleCount: number;
+     *     renderTarget: RenderTarget;
+     *     initialized: boolean;
+	 * }
+	 *
 	 * @param {RenderTarget} renderTarget - The render target to update.
 	 * @param {number} [activeMipmapLevel=0] - The active mipmap level.
 	 */
@@ -194,6 +208,13 @@ class Textures extends DataMap {
 	 * triggers the upload of texture data to the GPU memory. If the texture data are
 	 * not yet ready for the upload, it uses default texture data for as a placeholder.
 	 *
+	 * 缓存 texture 相关数据 (注意区分 backend 缓存的数据)
+	 * {
+	 *     initialized: boolean;
+     *     generation: number; // texture.version
+     *     isDefaultTexture?: boolean; // 是否使用默认纹理 (纹理数据尚未准备好)
+	 * }
+	 *
 	 * @param {Texture} texture - The texture to update.
 	 * @param {Object} [options={}] - The options.
 	 */
@@ -304,6 +325,7 @@ class Textures extends DataMap {
 
 					}
 
+					// 上传纹理数据
 					if ( texture.source.dataReady === true ) backend.updateTexture( texture, options );
 
 					if ( options.needsMipmaps && texture.mipmaps.length === 0 ) backend.generateMipmaps( texture );

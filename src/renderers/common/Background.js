@@ -49,6 +49,13 @@ class Background extends DataMap {
 	 * or add a mesh to the render list for rendering the background as a textured plane
 	 * or skybox.
 	 *
+	 * 缓存 scene 对应的 background 相关数据
+	 * {
+	 *	  backgroundMesh: Mesh;
+	 *	  backgroundMeshNode: ContextNode;
+	 *	  backgroundCacheKey: number;
+	 * }
+	 *
 	 * @param {Scene} scene - The scene.
 	 * @param {RenderList} renderList - The current render list.
 	 * @param {RenderContext} renderContext - The current render context.

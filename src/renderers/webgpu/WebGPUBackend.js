@@ -158,7 +158,8 @@ class WebGPUBackend extends Backend {
 
 	/**
 	 * Initializes the backend so it is ready for usage.
-	 * 创建 GPUAdapter, GPUDevice, GPUCanvasContext, updateSize
+	 *
+	 * 创建 GPUAdapter, GPUDevice, GPUCanvasContext
 	 *
 	 * @async
 	 * @param {Renderer} renderer - The renderer.
@@ -376,6 +377,20 @@ class WebGPUBackend extends Backend {
 	/**
 	 * Returns the render pass descriptor for the given render context.
 	 *
+	 * 缓存 renderTarget 相关数据
+	 * {
+     *     descriptors: Record<hash, {
+     *         textureViews: Array<{ view: GPUTextureView; resolveTarget: GPUTextureView; depthSlice?: number }>;
+     *         depthStencilView: GPUTextureView;
+     *     }>;
+     *     width: number;
+     *     height: number;
+     *     samples: number;
+     *     activeMipmapLevel: number;
+     *     activeCubeFace: number;
+     *     dimensions?: ;
+	 * }
+	 *
 	 * @private
 	 * @param {RenderContext} renderContext - The render context.
 	 * @param {Object} colorAttachmentsConfig - Configuration object for the color attachments.
@@ -562,6 +577,25 @@ class WebGPUBackend extends Backend {
 	/**
 	 * This method is executed at the beginning of a render call and prepares
 	 * the WebGPU state for upcoming render calls
+	 *
+	 * 创建 GPUQuerySet, GPURenderPassDescriptor, GPUCommandEncoder, GPURenderPassEncoder
+	 * setViewport, setScissorRect
+	 *
+	 * 缓存 renderContext 相关数据
+	 * {
+     *     currentOcclusionQuerySet: GPUQuerySet;
+     *     currentOcclusionQueryBuffer: GPUBuffer;
+     *     currentOcclusionQueryObjects: Array<>;
+     *     occlusionQuerySet: GPUQuerySet;
+     *     occlusionQueryIndex: number;
+     *     occlusionQueryObjects: Array<>;
+     *     lastOcclusionObject: ;
+     *     currentPass: GPURenderPassEncoder;
+     *     descriptor: GPURenderPassDescriptor;
+     *     encoder: GPUCommandEncoder;
+     *     currentSets: { attributes: {}, bindingGroups: [], pipeline: null, index: null };
+     *     renderBundles: GPURenderBundle[];
+	 * }
 	 *
 	 * @param {RenderContext} renderContext - The render context.
 	 */
@@ -908,6 +942,8 @@ class WebGPUBackend extends Backend {
 	/**
 	 * This method is executed at the end of a render call and finalizes work
 	 * after draw calls.
+	 *
+	 * // executeBundles, 处理 occlusionQuery, 提交 GPUCommandBuffer, generateMipmaps
 	 *
 	 * @param {RenderContext} renderContext - The render context.
 	 */
@@ -2210,7 +2246,7 @@ class WebGPUBackend extends Backend {
 	 */
 	updateSize() {
 
-		this.colorBuffer = this.textureUtils.getColorBuffer();
+		this.colorBuffer = this.textureUtils.getColorBuffer(); // 使用 MSAA 时才会用到
 		this.defaultRenderPassdescriptor = null;
 
 	}
