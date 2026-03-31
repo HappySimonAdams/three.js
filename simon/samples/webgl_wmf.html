@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - wmf rendering</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="../../examples/main.css">
+		<style>
+			body {
+				background-color: #b0b0b0;
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<div id="container"></div>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - SVGLoader
+		</div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../../src/Three.js",
+					"three/addons/": "../../examples/jsm/"
+				}
+			}
+		</script>
+
+    <script src="./libs/wmf/wasm_exec.js"></script>
+
+		<script type="module">
+
+			import * as THREE from 'three';
+			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+			const go = new Go();
+			WebAssembly.instantiateStreaming( fetch( './libs/wmf/wmf.wasm' ), go.importObject ).then(
+				( result ) => go.run( result.instance ),
+			);
+
+			let renderer, scene, camera, gui, guiData;
+
+			init();
+
+			//
+
+			function init() {
+
+				const container = document.getElementById( 'container' );
+
+				//
+
+				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set( 0, 0, 200 );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				//
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render );
+				controls.screenSpacePanning = true;
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize );
+
+				guiData = {
+					currentURL: 'assets/wmf/tiger.wmf',
+				};
+
+				loadWMF( guiData.currentURL );
+
+				createGUI();
+
+			}
+
+			function createGUI() {
+
+				if ( gui ) gui.destroy();
+
+				gui = new GUI();
+
+				gui.add( guiData, 'currentURL', {
+
+					'Tiger': 'assets/wmf/tiger.wmf',
+					'Dwg': 'assets/wmf/dwg.wmf'
+
+				} ).name( 'WMF File' ).onChange( () => {
+
+					loadWMF( guiData.currentURL );
+
+				} );
+
+			}
+
+			async function loadWMF( url ) {
+
+				//
+
+				if ( scene ) disposeScene( scene );
+
+				//
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xb0b0b0 );
+
+				//
+
+				// const helper = new THREE.GridHelper( 160, 10, 0x8d8d8d, 0xc1c1c1 );
+				// helper.rotation.x = Math.PI / 2;
+				// scene.add( helper );
+
+				const response = await fetch( url );
+				if ( ! response.ok ) return;
+				const blob = await response.blob();
+				const reader = new FileReader();
+				reader.readAsDataURL( blob );
+				reader.onload = () => {
+
+					try {
+
+						// 调用 WASM 导出的函数
+						const base64Svg = window.Wmf2Svg( reader.result );
+						// console.info( base64Svg );
+
+						const { width, height } = getSVGSizeFromBase64( base64Svg );
+						const aspect = width / height;
+						console.log( 'SVG 真实宽高：', width, height );
+
+						const loader = new THREE.TextureLoader();
+						loader.load( base64Svg, ( texture ) => {
+
+							texture.needsUpdate = true;
+							texture.wrapS = THREE.ClampToEdgeWrapping;
+							texture.wrapT = THREE.ClampToEdgeWrapping;
+
+							const geometry = new THREE.PlaneGeometry( 100, 100 / aspect );
+							const material = new THREE.MeshBasicMaterial( {
+								map: texture,
+								transparent: true,
+								side: THREE.DoubleSide
+							} );
+							const svgMesh = new THREE.Mesh( geometry, material );
+							scene.add( svgMesh );
+
+							render();
+
+						} );
+
+					} catch ( err ) {
+
+						throw new Error( `SVG 转换失败：${err.message}` );
+
+					}
+
+				};
+
+			}
+
+			function getSVGSizeFromBase64( base64 ) {
+
+				// ① 去掉 Base64 前缀，只保留编码内容
+				const pureBase64 = base64.split( ',' )[ 1 ];
+				// ② 解码 Base64 → 原始 SVG 文本
+				const svgText = decodeURIComponent( atob( pureBase64 ).split( '' ).map( c =>
+					'%' + ( '00' + c.charCodeAt( 0 ).toString( 16 ) ).slice( - 2 )
+				).join( '' ) );
+				// ③ 解析 SVG 为 DOM 元素
+				const parser = new DOMParser();
+				const svgDoc = parser.parseFromString( svgText, 'image/svg+xml' );
+				const svgElement = svgDoc.documentElement;
+
+				// ④ 优先获取 viewBox（矢量SVG标准尺寸，最精准）
+				const viewBox = svgElement.getAttribute( 'viewBox' );
+				if ( viewBox ) {
+
+					const [ , , w, h ] = viewBox.split( ' ' ).map( Number );
+					return { width: w, height: h };
+
+				}
+
+				// ⑤ 无 viewBox 时，获取显式的 width/height
+				const w = parseFloat( svgElement.getAttribute( 'width' ) ) || 100;
+				const h = parseFloat( svgElement.getAttribute( 'height' ) ) || 100;
+				return { width: w, height: h };
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				render();
+
+			}
+
+			function render() {
+
+				renderer.render( scene, camera );
+
+			}
+
+			function disposeScene( scene ) {
+
+				scene.traverse( function ( object ) {
+
+					if ( object.isMesh || object.isLine ) {
+
+						object.geometry.dispose();
+						object.material.dispose();
+
+					}
+
+				} );
+
+			}
+
+		</script>
+
+	</body>
+</html>
